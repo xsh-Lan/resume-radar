@@ -1,12 +1,1 @@
-{
-  "version": "1.0",
-  "candidate_key": "example",
-  "privacy": {
-    "name": "not-stored",
-    "contact": "not-stored"
-  },
-  "education": [],
-  "experience": [],
-  "projects": [],
-  "skills": {}
-}
+[]

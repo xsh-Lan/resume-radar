@@ -1,4 +1,4 @@
 interface:
-  display_name: "Resume Refiner"
-  short_description: "Evidence-based resume rewriting without fabrication"
-  default_prompt: "Improve my resume for this target role without inventing facts."
+  display_name: "逐句审阅与定稿"
+  short_description: "根据岗位诊断逐句判断保留、改写、合并与压缩，并保持事实贡献边界"
+  default_prompt: "使用 $resume-refiner，依据当前岗位诊断逐句审阅简历，保留好句并解释修改依据。"

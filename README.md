@@ -1,82 +1,30 @@
-# 简历雷达
+# 简历雷达 V2
 
-一个本地 Codex 插件：把简历体检、JD 匹配评分、简历定制和面试准备组织成一个可追溯、可交叉验证的 Agent 工作流。
+当前版本：**2.3.0**。变更见 [更新记录](CHANGELOG.md)。
 
-- 产品名：**简历雷达**
-- Agent：`resume-coach`
-- 仓库：`resume-coach`
-- 核心原则：只使用用户提供的事实，不编造经历、数字或结果
-- 默认输出：一个 HTML 逐句体检报告；Markdown 为内部源文件，DOCX 按需生成
+从岗位任务与责任分析经历，再逐句检查事实、能力、岗位价值和表达。
 
-## 四个 Skill 的分工
+## 使用
 
-| Skill | 负责 | 不负责 |
-|---|---|---|
-| `job-application-assistant` | JD 解析、证据映射、100 分匹配评分、差距分析 | 不重写简历、不生成面试题 |
-| `resume-refiner` | 事实提取、逐句改写、结构与 ATS | 不评分 JD 匹配、不生成面试题 |
-| `excellent-resume-patterns` | 模式选择、岗位基准、结构与量化参照 | 不代替事实、不直接改写 |
-| `interview-prep` | 面试问题、STAR、自我介绍、声明可验证性 | 不重写简历、不重算匹配分 |
+- `$resume-coach`：总入口；可直接说“调用简历雷达，逐句分析这份简历”。
+- 简历+JD：对具体岗位诊断与定制。
+- 简历+方向：按方向和职级分析，披露无JD的依据边界。
+- 只有简历：提出有证据支持的候选方向，确认或暂定主方向后深入审阅。
 
-## 交叉验证
+总入口为 `skills/resume-coach/SKILL.md`；四个专业Skill共用事实与诊断，不要求每次独立运行四个Agent。旧 `/refine-resume` 文件作为兼容说明，实际发现入口以Skill为准。
 
-```text
-JD → job-application-assistant → 要求与证据矩阵
-证据 → resume-refiner → 带 CLAIM/EVIDENCE ID 的改写
-模式 → excellent-resume-patterns → 结构与质量基准
-面试 → interview-prep → 可解释性与追问风险
-        ↓
-      resume-coach 汇总、封顶、输出
-```
+## 文件交付
 
-一致性结论使用客观语言：
+标准库Python脚本：`workflow.py init`建立来源与空工作文件；模型按 `standards/data-contract.md` 分析填充；`workflow.py validate`检查引用、覆盖与数值；`render_report.py`生成HTML。脚本不调用模型，不自动生成诊断。
 
-- 四个 Skill 结论一致。
-- 存在一处分歧，需要补充证据后确认。
-- 证据不足或结论冲突，暂不给出最终结论。
+诊断覆盖全部实质文本单元，好句可以保留，未确认处保留未知。报告先展示整体判断，再展示要求、诊断、逐句处理和行动。评分与完整面试包按需。
 
-不使用颜色评级。
+HTML采用统一折叠布局：整体判断直接展示，其余栏目与逐句详情默认折叠。标题写清主题，说明文字写清展开用途；原句依据在当前内容内展开，不使用编号跳转。
 
-详见 `standards/cross_validation.md`。
+默认采用已确认的均衡版设计与正式诊断措辞：主判断、已有依据、证据缺口及优先事项构成首屏；逐句原文与判断并排，建议和待核实事项随后。窄屏为单列，打印时展开完整报告。HTML 自包含，无需联网。视觉规范见 `DESIGN.md`；首屏摘要可按数据契约填写 `run.report_overview`。
 
-## 评分体系
+## 参考与边界
 
-使用 `standards/scoring.md` v2.0：
+十类脱敏模式和条件卡片用于启发，不复制他人的事实，也不作为已验证的录用标准。原始资料留在用户私有档案。姓名与联系方式在进入工作数据前清理，输出显式脱敏，不依赖宿主钩子。
 
-- 六维 100 分制
-- 每个维度包含可解释子标准
-- 0-4 级评分锚点
-- 置信度 A/B/C/D
-- P0 诚信封顶
-- 交叉验证冲突修正
-- 评分校准样例
-
-## 30 秒快速上手
-
-1. 新开一个 Codex 对话，启用“简历雷达”。
-2. 发送 `/refine-resume`，附上你的简历和 JD。
-3. 按报告中的“10 个最优先修改点”逐个修改。
-4. 打开生成的 HTML 查看逐句体检；需要 Word 版时再单独要求 DOCX。
-
-## 快速使用
-
-```text
-/refine-resume
-```
-
-或直接说：
-
-> 调用简历雷达，根据这个 JD 体检并修改我的简历。
-
-## 可读输出
-
-默认只交付一个 HTML 逐句体检报告，文字要点直接在对话中说明。需要时再额外输出 DOCX。
-
-```bash
-python scripts/render_report.py report.md --output-dir out --formats html
-```
-
-## 隐私
-
-输出前通过 `scripts/sanitize_report.py` 和 `hooks.json` 删除姓名、邮箱、手机、微信等联系方式，保留院校、公司和项目内容。姓名和联系方式不写入事实库。
-
-详细结构见 `docs/architecture.md`。
+`evals/README.md` 区分机械验证、示例演练和需要人工标注的内容评测；通过结构检查不代表诊断质量已提升。第三方来源见 `THIRD_PARTY_NOTICES.md`。

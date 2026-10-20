@@ -1,7 +1,7 @@
 {
   "name": "resume-coach",
-  "version": "1.0.0+codex.20260929161348",
-  "description": "简历雷达：证据驱动的简历体检、JD 匹配评分、简历定制和面试准备。",
+  "version": "2.3.0",
+  "description": "简历雷达：根据JD或目标方向诊断岗位差距，追问关键事实并全量逐句审阅。",
   "author": {
     "name": "xsh-Lan"
   },
@@ -18,8 +18,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "简历雷达",
-    "shortDescription": "简历体检、JD 匹配评分、简历定制与面试准备",
-    "longDescription": "简历雷达通过 resume-coach 协调四个分工明确的 Skill，使用可校准的 100 分评分体系、交叉验证机制、用户事实库和标准化输出模板，提供证据驱动的简历优化。",
+    "shortDescription": "岗位差距诊断、关键事实追问与全量逐句审阅",
+    "longDescription": "通过岗位任务、责任深度与原文证据诊断差距，支持有JD、无JD有方向及方向探索。逐句给出保留、改写、合并、压缩、建议删除或追问，提供可追溯报告。",
     "developerName": "xsh-Lan",
     "category": "Productivity",
     "capabilities": [
@@ -27,10 +27,10 @@
       "Write"
     ],
     "defaultPrompt": [
-      "调用简历雷达，体检我的简历",
-      "根据这个 JD 优化我的简历并给出匹配评分",
-      "为我的目标岗位生成面试准备"
+      "调用简历雷达，根据JD逐句诊断我的简历",
+      "没有JD，按我的目标方向分析经历与岗位的差距",
+      "根据简历提出有依据的方向，并逐句审阅"
     ],
-    "brandColor": "#2563EB"
+    "brandColor": "#3561C8"
   }
 }

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Interview Prep"
-  short_description: "Build personalized product, growth and business interview preparation"
-  default_prompt: "Prepare me for an interview based on my resume and target job."
+  display_name: "证据追问与训练"
+  short_description: "通过关键追问澄清贡献与决策，并在请求时开展基于真实经历的面试训练"
+  default_prompt: "使用 $interview-prep，围绕岗位关键未知追问我，并根据回答更新事实。"

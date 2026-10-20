@@ -1,55 +1,14 @@
 ---
 name: excellent-resume-patterns
-description: De-identified resume patterns distilled from a local collection of strong product, data, AI, business-analysis, operations and supply-chain resumes. Use when tailoring a resume, selecting role-specific evidence, choosing a resume structure, improving quantified bullets, translating a non-target background, or checking whether a resume reaches the quality level of strong peer examples. Never use this skill to copy another person's facts or wording.
+description: 简历雷达的脱敏参考库。按目标任务、职级、个人作用和项目阶段查找证据与表达参照，适用于判断经历应展示什么以及如何忠实呈现。
 ---
 
-# Excellent Resume Patterns
+# 条件化参考库
 
-## 在“简历雷达”中的职责边界
+已有十类背景模式保留为检索线索，来源见 `references/privacy_and_provenance.md`。它们没有经过录用结果校准，不能当成职业成功标准或候选人事实来源。
 
-**负责：** 基于 `pattern_index.json` 选择结构和证据模式，提供岗位能力基准、量化方式和质量参照。
+先读 `reference_cards.json`，按 task、career_stage、actor_scope、project_state 选择必要的少量卡片；再按需读 `pattern_index.json` 找迁移线索。用户事实和目标要求优先。原始参考文件留在用户私有档案，运行不需要读取原件。
 
-**不负责：** 不替用户写经历，不计算 JD 匹配分，不生成面试题。
+返回：选用卡片及适用理由、必要事实是否齐备、可支持与不能支持的能力、表达结构与反例。保持用户的实际贡献和项目阶段。没有精确数字时可用具体产物、判断依据和任务范围，不要求固定数字比例。
 
-**交叉验证：** 为 `resume-refiner` 提供结构基准；对 JD 匹配结果提供模式层面的合理性检查；发现“结构很强但事实不足”时必须明确提示。
-
-
-This skill is a de-identified pattern library, not a set of resumes to copy.
-
-## Core rules
-
-1. Use patterns only for structure, emphasis, metrics, and language strategy.
-2. Never transfer a school, employer, project, metric, award, or achievement from a pattern to the user.
-3. A bullet can only use facts explicitly supplied or verified by the user.
-4. Preserve the difference between actual results, expected results, team results, and individual contribution.
-5. Prefer the user's strongest verified evidence over a superficially similar example from this library.
-
-## Read order
-
-1. Read `references/case_patterns.md` to find the closest background-to-role path.
-2. Read `references/role_playbooks.md` to determine the evidence required for the target role.
-3. Read `references/writing_system.md` for bullet structure and quantification.
-4. Read `references/rewrite_workflow.md` when performing a full resume rewrite.
-5. Use `references/quality_standard.md` for the final audit.
-6. Read `references/privacy_and_provenance.md` if the user asks where the patterns came from or how they were anonymized.
-
-## Matching procedure
-
-Choose at most three case patterns:
-
-- Pattern 1: closest background transition.
-- Pattern 2: target-role evidence structure.
-- Pattern 3: strongest comparison for quantification or project depth.
-
-Do not mix patterns until the user's own main narrative is stable.
-
-## Output contract
-
-When recommending changes, return:
-
-- the selected patterns and why they fit;
-- the user's verified evidence mapped to target competencies;
-- missing evidence or unclear metrics;
-- rewritten bullets;
-- one change log explaining why each rewrite is stronger;
-- a final no-fabrication check.
+用户请求主叙事或改写结构时读 `references/writing_system.md`；最终质量检查读 `references/quality_standard.md`。完整改写由 resume-refiner 执行，库只提供条件与参考。

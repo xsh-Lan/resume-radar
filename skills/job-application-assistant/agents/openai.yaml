@@ -1,4 +1,4 @@
 interface:
-  display_name: "Job Application Assistant"
-  short_description: "Evaluate jobs, tailor resumes and prepare applications"
-  default_prompt: "Evaluate this job posting and tailor my resume using verified facts."
+  display_name: "岗位差距分析"
+  short_description: "按工作任务、责任深度和原文证据分析候选人与具体岗位之间的差距"
+  default_prompt: "使用 $job-application-assistant，分析岗位要求、经历证据与尚未明确的差距。"

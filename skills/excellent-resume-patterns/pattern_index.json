@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "patterns": [
     {
       "id": "A",
@@ -36,6 +36,18 @@
         "AB Test",
         "回归",
         "咨询"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -71,6 +83,18 @@
         "Agent",
         "Prompt",
         "badcase"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -106,6 +130,18 @@
         "商家分层",
         "广告投放",
         "活动"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -140,6 +176,18 @@
         "SDK",
         "控制台",
         "原型"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -172,6 +220,18 @@
         "Python",
         "预测",
         "聚类"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -204,6 +264,18 @@
         "CRM",
         "活动",
         "SOP"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -235,6 +307,18 @@
         "留存",
         "流量",
         "可视化"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -270,6 +354,18 @@
         "RAG",
         "Prompt",
         "商业化"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -301,6 +397,18 @@
         "Python",
         "AB Test",
         "可视化"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     },
     {
@@ -334,7 +442,20 @@
         "实验",
         "目标系数",
         "周报"
+      ],
+      "limitations": [
+        "来源未经过录用结果校准",
+        "专业背景不决定岗位适配",
+        "技术词和指标类型不证明实际能力"
+      ],
+      "match_after": [
+        "target_task",
+        "career_stage",
+        "actor_scope",
+        "project_state",
+        "evidence_available"
       ]
     }
-  ]
+  ],
+  "usage": "背景迁移检索线索；非事实来源、非录用标准。优先按条件卡片匹配任务与职责。"
 }

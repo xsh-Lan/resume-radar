@@ -1,0 +1,298 @@
+{
+  "version": "2.0",
+  "source_note": "本文件为虚构教学事实与条件化编辑示例，不能复制为用户经历；原有十类脱敏模式另存于pattern_index.json，来源未经过录用结果校准。",
+  "cards": [
+    {
+      "id": "research-delivery",
+      "title": "用户研究与原型交付",
+      "task": [
+        "调研",
+        "需求分析"
+      ],
+      "career_stage": [
+        "实习",
+        "校招",
+        "社招"
+      ],
+      "actor_scope": [
+        "参与",
+        "独立交付"
+      ],
+      "project_state": [
+        "研究中",
+        "待评审",
+        "未上线"
+      ],
+      "necessary_facts": [
+        "调研对象",
+        "本人动作",
+        "发现",
+        "交付物"
+      ],
+      "example_facts": "访谈8名商家；识别入口问题；本人整理清单绘原型；提交负责人；尚未上线。",
+      "good_example": "访谈8名商家，识别优惠配置入口难找的问题；整理问题清单并绘制调整原型，提交负责人评审。",
+      "bad_example": "主导产品增长并显著提高转化率。",
+      "supports": [
+        "访谈与问题归纳",
+        "原型交付"
+      ],
+      "does_not_support": [
+        "上线效果",
+        "业务增长"
+      ],
+      "provenance": "synthetic-editorial-example",
+      "limitations": [
+        "依据用户真实材料决定是否采用",
+        "例句不是用户事实"
+      ]
+    },
+    {
+      "id": "execution-scope",
+      "title": "按既定标准执行与交付",
+      "task": [
+        "测试",
+        "评测",
+        "运营执行"
+      ],
+      "career_stage": [
+        "实习",
+        "校招"
+      ],
+      "actor_scope": [
+        "参与",
+        "执行"
+      ],
+      "project_state": [
+        "已交付"
+      ],
+      "necessary_facts": [
+        "任务标准来源",
+        "本人执行范围",
+        "交付物"
+      ],
+      "example_facts": "团队制定标准；本人执行测试并整理异常清单；负责人确认。",
+      "good_example": "按团队既定标准完成测试并整理异常清单，交由负责人确认。",
+      "bad_example": "制定评测体系并决定产品上线。",
+      "supports": [
+        "执行质量",
+        "问题记录"
+      ],
+      "does_not_support": [
+        "独立制定标准",
+        "上线决策"
+      ],
+      "provenance": "synthetic-editorial-example",
+      "limitations": [
+        "依据用户真实材料决定是否采用",
+        "例句不是用户事实"
+      ]
+    },
+    {
+      "id": "decision-tradeoff",
+      "title": "有依据的方案选择",
+      "task": [
+        "方案设计",
+        "分析"
+      ],
+      "career_stage": [
+        "校招",
+        "社招"
+      ],
+      "actor_scope": [
+        "独立决策",
+        "参与决策"
+      ],
+      "project_state": [
+        "验证中",
+        "已交付"
+      ],
+      "necessary_facts": [
+        "备选方案",
+        "约束",
+        "本人决策",
+        "依据"
+      ],
+      "example_facts": "比较备选方案；记录时间数据约束及选择依据；提交评审；结果待验证。",
+      "good_example": "在已确认的时间与数据约束下比较备选方案，记录选择依据并提交评审。",
+      "bad_example": "用先进架构全面赋能业务。",
+      "supports": [
+        "方案比较与判断"
+      ],
+      "does_not_support": [
+        "效果已提升",
+        "最终商业价值"
+      ],
+      "provenance": "synthetic-editorial-example",
+      "limitations": [
+        "依据用户真实材料决定是否采用",
+        "例句不是用户事实"
+      ]
+    },
+    {
+      "id": "unfinished-project",
+      "title": "未上线项目的实际产物",
+      "task": [
+        "产品设计",
+        "原型验证"
+      ],
+      "career_stage": [
+        "实习",
+        "校招",
+        "社招"
+      ],
+      "actor_scope": [
+        "参与",
+        "独立交付"
+      ],
+      "project_state": [
+        "未上线",
+        "原型"
+      ],
+      "necessary_facts": [
+        "产物",
+        "本人负责部分",
+        "当前阶段"
+      ],
+      "example_facts": "本人完成清单与原型；评审阶段；未上线。",
+      "good_example": "完成需求清单与原型，交付负责人评审，尚未上线。",
+      "bad_example": "完成从0到1闭环并实现增长。",
+      "supports": [
+        "需求整理",
+        "原型交付"
+      ],
+      "does_not_support": [
+        "线上指标",
+        "用户采用"
+      ],
+      "provenance": "synthetic-editorial-example",
+      "limitations": [
+        "依据用户真实材料决定是否采用",
+        "例句不是用户事实"
+      ]
+    },
+    {
+      "id": "metric-result",
+      "title": "指标结果与归因",
+      "task": [
+        "实验",
+        "效果评估"
+      ],
+      "career_stage": [
+        "校招",
+        "社招"
+      ],
+      "actor_scope": [
+        "参与",
+        "独立负责"
+      ],
+      "project_state": [
+        "已验证"
+      ],
+      "necessary_facts": [
+        "基线",
+        "结果",
+        "时间范围",
+        "指标定义",
+        "归因范围"
+      ],
+      "example_facts": "实际使用时必须引用用户给定的数据与归因材料。",
+      "good_example": "按已提供的基线、结果和评估口径描述变化，明确个人动作及团队贡献。",
+      "bad_example": "补一个更有冲击力的百分比。",
+      "supports": [
+        "有依据的效果判断"
+      ],
+      "does_not_support": [
+        "超出材料的因果关系"
+      ],
+      "provenance": "synthetic-editorial-example",
+      "limitations": [
+        "依据用户真实材料决定是否采用",
+        "例句不是用户事实"
+      ]
+    },
+    {
+      "id": "negative-result",
+      "title": "未达预期实验的判断价值",
+      "task": [
+        "实验",
+        "评测",
+        "数据分析"
+      ],
+      "career_stage": [
+        "实习",
+        "校招",
+        "社招"
+      ],
+      "actor_scope": [
+        "参与",
+        "独立分析"
+      ],
+      "project_state": [
+        "未达预期",
+        "停止"
+      ],
+      "necessary_facts": [
+        "假设",
+        "检验方法",
+        "实际结果",
+        "后续判断"
+      ],
+      "example_facts": "结果未达目标；本人整理原因和调整建议。",
+      "good_example": "验证方案未达到预设目标，整理失败原因与后续调整建议。",
+      "bad_example": "成功验证方案并显著改善业务。",
+      "supports": [
+        "验证与复盘"
+      ],
+      "does_not_support": [
+        "成功上线",
+        "业务提升"
+      ],
+      "provenance": "synthetic-editorial-example",
+      "limitations": [
+        "依据用户真实材料决定是否采用",
+        "例句不是用户事实"
+      ]
+    },
+    {
+      "id": "transferable-work",
+      "title": "跨场景迁移",
+      "task": [
+        "分析",
+        "项目协作"
+      ],
+      "career_stage": [
+        "实习",
+        "校招",
+        "转岗"
+      ],
+      "actor_scope": [
+        "参与",
+        "独立交付"
+      ],
+      "project_state": [
+        "已交付"
+      ],
+      "necessary_facts": [
+        "原场景",
+        "相同任务",
+        "产物",
+        "新场景未知"
+      ],
+      "example_facts": "实际任务在原行业完成；新行业经验尚未确认。",
+      "good_example": "描述原场景中的实际分析与交付，并解释与目标任务相通的部分。",
+      "bad_example": "将非产品项目直接更名为产品负责人经历。",
+      "supports": [
+        "可迁移任务证据"
+      ],
+      "does_not_support": [
+        "目标行业已熟悉",
+        "新场景独立负责"
+      ],
+      "provenance": "synthetic-editorial-example",
+      "limitations": [
+        "依据用户真实材料决定是否采用",
+        "例句不是用户事实"
+      ]
+    }
+  ]
+}

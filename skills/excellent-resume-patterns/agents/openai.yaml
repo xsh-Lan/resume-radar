@@ -1,4 +1,4 @@
 interface:
-  display_name: "Excellent Resume Patterns"
-  short_description: "De-identified patterns from strong peer resumes"
-  default_prompt: "Use the de-identified resume patterns to improve structure and evidence without copying facts."
+  display_name: "条件化简历参考"
+  short_description: "按岗位任务、职级和项目阶段选择参考，明确适用事实和不能推导的结论"
+  default_prompt: "使用 $excellent-resume-patterns，按目标任务选用适当参考卡片，解释适用条件。"

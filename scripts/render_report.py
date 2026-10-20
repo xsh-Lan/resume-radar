@@ -1,225 +1,252 @@
 #!/usr/bin/env python3
-"""Render Markdown reports into readable HTML and DOCX files.
-
-Markdown remains the source of truth. HTML is dependency-free; DOCX requires
-python-docx. PDF is optional and can be produced by opening DOCX/HTML in Word,
-WPS, or a browser and using Print / Save as PDF.
-"""
-from __future__ import annotations
-
+"""Render a standalone resume diagnosis. Only the overall judgment starts visible."""
 import argparse
 import html
+import json
 import re
-import sys
+from collections import OrderedDict
 from pathlib import Path
+from workflow import read_json, validate_run
+from sanitize_report import sanitize_text
 
-CSS = """
-* { box-sizing: border-box; }
-:root { color-scheme: light; --blue:#2563eb; --ink:#172033; --muted:#64748b; --line:#e5e7eb; --bg:#eef2f8; }
-body { margin:0; background:var(--bg); color:var(--ink); font-family:"Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif; }
-.topbar { position:sticky; top:0; z-index:20; background:#ffffff; border-bottom:1px solid var(--line); padding:14px 24px; display:flex; align-items:center; gap:16px; box-shadow:0 2px 8px rgba(15,23,42,.05); }
-.topbar .brand { font-weight:800; color:#0f172a; font-size:16px; }
-.topbar .subtitle { color:var(--muted); font-size:13px; }
-.layout { max-width:1200px; margin:24px auto; display:grid; grid-template-columns:264px minmax(0,1fr); gap:22px; padding:0 20px; }
-.toc { position:sticky; top:84px; align-self:start; background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; max-height:calc(100vh - 104px); overflow:auto; }
-.toc .toc-title { font-size:12px; letter-spacing:.08em; color:var(--muted); text-transform:uppercase; margin:0 0 8px; }
-.toc a { display:block; padding:6px 8px; margin:2px 0; color:#475569; text-decoration:none; border-radius:7px; font-size:13px; line-height:1.45; }
-.toc a:hover { background:#eff6ff; color:var(--blue); }
-.toc a.l2 { font-weight:600; }
-.toc a.l3 { padding-left:18px; }
-.content { min-width:0; background:#fff; border:1px solid var(--line); border-radius:18px; padding:44px 52px; box-shadow:0 12px 34px rgba(15,23,42,.08); }
-h1,h2,h3,h4 { color:#0f172a; line-height:1.3; scroll-margin-top:90px; }
-h1 { font-size:28px; margin:0 0 22px; padding-bottom:16px; border-bottom:2px solid var(--blue); }
-h2 { font-size:21px; margin:2.4em 0 .9em; padding-bottom:10px; border-bottom:1px solid var(--line); }
-h3 { font-size:16px; margin:1.6em 0 .6em; color:#1d4ed8; }
-h4 { font-size:15px; margin:1.2em 0 .4em; color:#334155; }
-p,li,td,th { font-size:14.5px; line-height:1.75; }
-ul,ol { padding-left:24px; }
-blockquote { margin:16px 0; padding:12px 18px; background:#f8fafc; border-left:4px solid var(--blue); color:#334155; border-radius:8px; }
-table { width:100%; border-collapse:collapse; margin:18px 0; font-size:13.5px; }
-th { background:#f1f5f9; color:#0f172a; text-align:left; }
-th,td { border:1px solid #dbe2ea; padding:9px 10px; vertical-align:top; }
-tbody tr:nth-child(even) { background:#fafbfd; }
-code { background:#f1f5f9; padding:2px 5px; border-radius:5px; font-family:Consolas,monospace; font-size:12.5px; color:#334155; }
-pre { background:#0f172a; color:#e2e8f0; padding:16px; border-radius:10px; overflow:auto; }
-pre code { background:transparent; color:inherit; padding:0; }
-hr { border:0; border-top:1px solid var(--line); margin:30px 0; }
-.kv { display:grid; grid-template-columns:118px 1fr; gap:6px 12px; margin:7px 0; padding:8px 11px; border:1px solid #eef2f7; border-left:3px solid var(--blue); background:#fbfdff; border-radius:7px; }
-.kv .k { font-weight:700; color:#1e3a8a; white-space:nowrap; font-size:13.5px; }
-.kv .v p { margin:0; }
-.sev { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; }
-.sev.high { background:#fee2e2; color:#b91c1c; }
-.sev.medium { background:#ffedd5; color:#c2410c; }
-.sev.low { background:#e5e7eb; color:#475569; }
-.reading-guide { display:flex; gap:12px; align-items:flex-start; margin:0 0 22px; padding:14px 16px; background:#eef6ff; border:1px solid #c7dbff; border-radius:12px; color:#1e3a8a; font-size:14px; line-height:1.6; }
-.reading-guide strong { white-space:nowrap; }
-.next-steps { margin-top:36px; padding:18px 20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; }
-.next-steps h2 { margin-top:0; border-bottom:0; padding-bottom:0; }
-.next-steps p { margin:8px 0 0; }
-@media (max-width: 900px) { .layout{grid-template-columns:1fr} .toc{position:static;max-height:none} .content{padding:26px 20px} table{display:block;overflow-x:auto;white-space:nowrap} .reading-guide{flex-direction:column;gap:4px} }
-@media print { body{background:#fff} .topbar,.toc{display:none} .layout{display:block;max-width:none;margin:0;padding:0} .content{border:0;box-shadow:none;border-radius:0;padding:0} h2{break-after:avoid} table{break-inside:auto} tr{break-inside:avoid} }
-"""
+LABELS = {
+    'jd': '具体 JD 分析', 'direction': '岗位方向分析', 'explore': '基于简历的方向分析',
+    'keep': '保留', 'rewrite': '建议改写', 'merge': '建议合并', 'compress': '建议压缩',
+    'drop': '建议删除', 'needs_input': '需要补充事实',
+    'direct': '有直接材料支持', 'transferable': '有可迁移的经历', 'partial': '已有部分依据',
+    'unknown': '现有材料不足以判断', 'missing': '已有依据确认缺口', 'conflicting': '材料有待核对',
+    'expression': '表达与组织问题', 'evidence_missing': '关键信息尚未呈现',
+    'experience_gap': '已确认的经历缺口', 'depth_gap': '已确认的责任范围差距',
+    'transfer_gap': '场景迁移仍需说明', 'hard_constraint': '明确条件不符', 'source_conflict': '材料之间存在矛盾',
+    'jd_basis': 'JD 明示要求', 'role_standard': '方向级参考标准', 'hypothesis': '本次分析的暂定假设',
+    'self_reported': '简历中的自述', 'user_confirmed': '用户补充说明', 'artifact_supported': '所附材料支持',
+    'unclear': '尚待澄清',
+}
 
 
-def inline_html(s: str) -> str:
-    s=html.escape(s, quote=False)
-    s=re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', s)
-    s=re.sub(r'`(.+?)`', r'<code>\1</code>', s)
-    return s
+def esc(value):
+    return html.escape(str(value), quote=True)
 
-def inline_text(s: str) -> str:
-    s=re.sub(r'\*\*(.+?)\*\*', r'\1', s)
-    s=re.sub(r'`(.+?)`', r'\1', s)
-    return s.replace('\t',' ')
 
-def is_table_start(lines, i):
-    return i+1 < len(lines) and lines[i].strip().startswith('|') and re.match(r'^\s*\|?[\s:|-]+\|?\s*$', lines[i+1])
+def label(value):
+    return LABELS.get(value, value)
 
-def parse_table(lines, i):
-    rows=[]
-    while i < len(lines) and lines[i].strip().startswith('|'):
-        raw=lines[i].strip().strip('|')
-        cells=[inline_html(c.strip()) for c in raw.split('|')]
-        if not re.match(r'^[\s:|-]+$', raw):
-            rows.append(cells)
-        i += 1
-    return rows, i
 
-def markdown_to_html(md: str):
-    lines=md.splitlines()
-    out=[]; i=0; list_type=None; in_code=False; code=[]
-    headings=[]; heading_no=0
-    def close_list():
-        nonlocal list_type
-        if list_type:
-            out.append(f'</{list_type}>')
-            list_type=None
-    while i < len(lines):
-        line=lines[i]
-        if line.strip().startswith('```'):
-            if in_code:
-                out.append('<pre><code>'+html.escape('\n'.join(code))+'</code></pre>')
-                code=[]; in_code=False
-            else:
-                close_list(); in_code=True
-            i+=1; continue
-        if in_code:
-            code.append(line); i+=1; continue
-        if not line.strip():
-            close_list(); i+=1; continue
-        if is_table_start(lines,i):
-            close_list(); rows,i=parse_table(lines,i)
-            if rows:
-                out.append('<table><thead><tr>'+''.join(f'<th>{c}</th>' for c in rows[0])+'</tr></thead><tbody>')
-                for row in rows[1:]: out.append('<tr>'+''.join(f'<td>{c}</td>' for c in row)+'</tr>')
-                out.append('</tbody></table>')
-            continue
-        m=re.match(r'^(#{1,4})\s+(.*)$', line)
-        if m:
-            close_list(); level=len(m.group(1)); heading_no+=1; hid=f"h{heading_no}"; headings.append((level,inline_text(m.group(2)),hid)); out.append(f'<h{level} id="{hid}">{inline_html(m.group(2))}</h{level}>'); i+=1; continue
-        m=re.match(r'^\s*[-*]\s*(原句|诊断|问题等级|建议改法|可直接替换|待补信息)[：:](.*)$', line)
-        if m:
-            close_list()
-            val=inline_html(m.group(2).strip())
-            if m.group(1)=='问题等级':
-                cls='high' if '高' in m.group(2) else ('medium' if '中' in m.group(2) else 'low')
-                val=f'<span class="sev {cls}">{val}</span>'
-            out.append('<div class="kv"><span class="k">'+inline_html(m.group(1))+'</span><div class="v"><p>'+val+'</p></div></div>')
-            i+=1; continue
-        m=re.match(r'^\s*[-*]\s+(.*)$', line)
-        if m:
-            if list_type!='ul': close_list(); out.append('<ul>'); list_type='ul'
-            out.append('<li>'+inline_html(m.group(1))+'</li>'); i+=1; continue
-        m=re.match(r'^\s*\d+[.)]\s+(.*)$', line)
-        if m:
-            if list_type!='ol': close_list(); out.append('<ol>'); list_type='ol'
-            out.append('<li>'+inline_html(m.group(1))+'</li>'); i+=1; continue
-        if line.startswith('>'):
-            close_list(); out.append('<blockquote>'+inline_html(line.lstrip('> ').strip())+'</blockquote>'); i+=1; continue
-        if line.strip() in ('---','***'):
-            close_list(); out.append('<hr>'); i+=1; continue
-        close_list(); out.append('<p>'+inline_html(line.strip())+'</p>'); i+=1
-    close_list()
-    return '\n'.join(out), headings
+def p(value, cls=''):
+    return '<p' + (' class="' + cls + '"' if cls else '') + '>' + esc(value).replace('\n', '<br>') + '</p>'
 
-def markdown_to_docx(md: str, path: Path) -> tuple[bool,str]:
-    try:
-        from docx import Document
-        from docx.shared import Pt, Inches
-    except Exception as exc:
-        return False, f'python-docx not installed: {exc}'
-    doc=Document()
-    for section in doc.sections:
-        section.top_margin=Inches(0.65); section.bottom_margin=Inches(0.65)
-        section.left_margin=Inches(0.72); section.right_margin=Inches(0.72)
-    style=doc.styles['Normal']; style.font.name='Microsoft YaHei'; style.font.size=Pt(10.5)
-    lines=md.splitlines(); i=0; in_code=False; code=[]
-    while i < len(lines):
-        line=lines[i]
-        if line.strip().startswith('```'):
-            if in_code:
-                p=doc.add_paragraph('\n'.join(code)); p.style=doc.styles['No Spacing']
-                for run in p.runs: run.font.name='Consolas'; run.font.size=Pt(9)
-                code=[]; in_code=False
-            else: in_code=True
-            i+=1; continue
-        if in_code: code.append(line); i+=1; continue
-        if not line.strip(): i+=1; continue
-        if is_table_start(lines,i):
-            rows,i=parse_table(lines,i)
-            if rows:
-                table=doc.add_table(rows=len(rows), cols=max(len(r) for r in rows))
-                try: table.style='Light Grid Accent 1'
-                except Exception: table.style='Table Grid'
-                for ri,row in enumerate(rows):
-                    for ci,cell in enumerate(row):
-                        table.cell(ri,ci).text=re.sub(r'<[^>]+>','',cell)
-            continue
-        m=re.match(r'^(#{1,4})\s+(.*)$', line)
-        if m:
-            doc.add_heading(inline_text(m.group(2)), level=min(len(m.group(1)),4)); i+=1; continue
-        m=re.match(r'^\s*[-*]\s+(.*)$', line)
-        if m:
-            p=doc.add_paragraph(style='List Bullet'); p.add_run(inline_text(m.group(1))); i+=1; continue
-        m=re.match(r'^\s*\d+[.)]\s+(.*)$', line)
-        if m:
-            p=doc.add_paragraph(style='List Number'); p.add_run(inline_text(m.group(1))); i+=1; continue
-        if line.startswith('>'):
-            p=doc.add_paragraph(); p.paragraph_format.left_indent=Inches(0.25); p.add_run(inline_text(line.lstrip('> ').strip())).italic=True; i+=1; continue
-        if line.strip() in ('---','***'):
-            doc.add_paragraph('────────────────────'); i+=1; continue
-        doc.add_paragraph(inline_text(line.strip())); i+=1
-    doc.save(path)
-    return True,''
+
+def prose(value):
+    return ''.join(p(v) for v in re.split(r'\n\s*\n', str(value)) if v.strip())
+
+
+def field(title, value, kind=''):
+    return '<div class="field' + (' field-' + kind if kind else '') + '"><h4>' + esc(title) + '</h4>' + prose(value) + '</div>'
+
+
+def icon(name):
+    paths = {
+        'check': 'm5 12 4 4L19 6',
+        'search': 'M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm5-2 6 6',
+        'arrow': 'M4 12h16m-6-6 6 6-6 6',
+        'chevron': 'm6 9 6 6 6-6',
+    }
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + paths[name] + '"/></svg>'
+
+
+def fold(ident, title, purpose, body, cls='report-section', decision=''):
+    state = ' data-decision="' + esc(decision) + '"' if decision else ''
+    return (f'<details class="{cls}" id="{esc(ident)}"{state}><summary>'
+            f'<span class="summary-text"><span class="fold-title">{esc(title)}</span>'
+            f'<span class="fold-purpose">{esc(purpose)}</span></span>'
+            f'<span class="fold-state" aria-hidden="true">{icon("chevron")}</span></summary>'
+            f'<div class="fold-content">{body}</div></details>')
+
+
+def overview(run, count):
+    display = run.get('report_overview')
+    mode_note = '依据本次提供的 JD' if run['mode'] == 'jd' else '尚未提供具体 JD'
+    body = ['<section class="overview" id="overall" aria-labelledby="overall-title"><div class="judgment">',
+            '<div class="overview-label"><h2 id="overall-title">整体判断</h2><span class="mode">' + mode_note + '</span></div>']
+    if display:
+        body.extend(['<h3 class="overview-headline">' + esc(display['headline']).replace('\n', '<br>') + '</h3>',
+                     '<div class="overview-intro">' + prose(display['introduction']) + '</div>',
+                     '<div class="judgment-points"><div><h4>' + icon('check') + '已有经历依据</h4>' + prose(display['evidence_summary']) + '</div>',
+                     '<div><h4>' + icon('search') + '关键证据缺口</h4>' + prose(display['gap_summary']) + '</div></div>'])
+    else:
+        body.append('<div class="overview-prose">' + prose(run['summary']) + '</div>')
+    body.append('</div>')
+    priorities = display['priorities'] if display else []
+    if not display:
+        priorities = [{'title': '', 'text': a['text']} for a in run.get('actions', []) if a['type'] == 'evidence'][:2]
+    if priorities:
+        body.append('<aside class="advice" aria-label="优先补充事项"><h3>优先补充事项</h3><div class="advice-items">')
+        for item in priorities:
+            body.append('<div class="advice-item">' + icon('arrow') + '<div>'
+                        + ('<h4>' + esc(item['title']) + '</h4>' if item['title'] else '') + prose(item['text']) + '</div></div>')
+        body.append('</div>' + p('材料未呈现的部分仍需核实，不能据此认定候选人缺乏相应能力。', 'kind-note') + '</aside>')
+    body.append('</section>')
+    return ''.join(body)
+
+
+def render(directory, output_dir):
+    root = Path(directory)
+    result = validate_run(root)
+    if not result['ok']:
+        raise ValueError(json.dumps(result, ensure_ascii=False))
+    run = read_json(root / 'run.json')
+    sources = read_json(root / 'sources.json')['sources']
+    units = {u['id']: u for s in sources for u in s['units']}
+    reqs = read_json(root / 'requirements.json')
+    reqmap = {r['id']: r for r in reqs}
+    evidence = {e['id']: e for e in read_json(root / 'evidence.json')}
+    diags = read_json(root / 'diagnosis.json')
+    diagmap = {d['id']: d for d in diags}
+    reviews = read_json(root / 'sentence_review.json')
+    count = result['counts']
+
+    def evidence_inline(ids):
+        body = []
+        for ident in dict.fromkeys(ids):
+            e = evidence[ident]
+            u = units[e['unit_id']]
+            location = (u.get('section') or '简历信息') + '，提取文本第 ' + str(u['line']) + ' 行；' + label(e['status'])
+            body.extend(['<div class="source-excerpt">', p(location, 'source-location'),
+                         '<blockquote>' + esc(e['quote']) + '</blockquote></div>'])
+        return ''.join(body)
+
+    def support_fold(ids, ident):
+        if not ids:
+            return ''
+        return fold(ident, '原文依据', f'在当前内容中展开 {len(set(ids))} 条引用原文', evidence_inline(ids), 'inline-evidence')
+
+    title = run.get('report_title') or ((run.get('target') + ' ' if run.get('target') else '') + '简历诊断报告')
+    mode = label(run['mode'])
+    stage = run.get('stage')
+    subtitle = mode + ('，目标阶段：' + stage if stage and stage != 'unknown' else '') + '。'
+    brand = '<div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="3" width="22" height="26" rx="6"/><path d="M11 11h10M11 16h7M11 21h4"/><circle cx="24" cy="24" r="6" fill="#fff"/><path d="m21 24 2 2 4-4"/></svg><span>简历雷达</span></div>'
+    parts = ['<header class="topbar"><div class="topbar-inner">', brand,
+             '<span class="report-category">岗位分析与逐句审阅</span></div></header><main class="page">',
+             '<div class="page-heading"><div><h1>' + esc(title) + '</h1>' + p(subtitle) + '</div>',
+             p('报告日期　' + str(run['analysis_date']), 'date') if run.get('analysis_date') else '',
+             '</div>', overview(run, count),
+             '<div class="report-intro"><div><h2>诊断明细</h2>' + p('展开栏目，查看分析依据与修订建议。') + '</div>',
+             '<div class="report-controls" role="group" aria-label="控制报告详情的展开与收起"><button type="button" data-action="expand">展开全部详情</button><button type="button" data-action="collapse">收起全部详情</button></div></div>',
+             '<div class="report-index">']
+
+    basis = [field('当前分析方向', run.get('target') or '方向尚待确定')]
+    if run.get('target_status') == 'provisional':
+        basis.append(p('当前方向依据简历材料暂定，尚待用户确认。', 'boundary-note'))
+    basis.append(field('分析范围', '经历与指标按所提供材料记录，未做外部事实核验。' +
+                       ('未提供具体 JD，岗位要求为方向级参考，不代表特定公司的招聘门槛或录用概率。'
+                        if run['mode'] != 'jd' else '岗位要求依据本次提供的 JD；解释性推断另行说明。')))
+    if run.get('assumptions'):
+        basis.append(field('假设与适用边界', '\n'.join(run['assumptions'])))
+    if run.get('report_overview'):
+        basis.append(field('整体判断详细说明', run['summary']))
+    for n, option in enumerate(run.get('role_options', []), 1):
+        basis.extend(['<article class="analysis-item"><h3>' + esc(option['role']) + '</h3>',
+                      field('方向支持依据', option['rationale']), field('待确认信息', option['unknowns']),
+                      support_fold(option['evidence_ids'], 'role-' + str(n)), '</article>'])
+    basis.append('<h3 class="subsection-title">目标方向的岗位能力要求</h3>')
+    for r in reqs:
+        basis.extend(['<article class="analysis-item"><h3>' + esc(r['description']) + '</h3>',
+                      p(label(r['support']) + '；' + ('JD 明示要求' if r['basis'] == 'jd' else label(r['basis'])), 'item-status'),
+                      field('岗位任务', r['task']), field('责任范围与决策深度', r['responsibility'] + '；' + r['decision_depth'])])
+        for uid in r.get('source_unit_ids', []):
+            basis.append(field('JD 原文', units[uid]['text'], 'original'))
+        if r.get('basis_note'):
+            basis.append(field('标准依据与适用范围', r['basis_note']))
+        basis.extend([support_fold(r.get('evidence_ids', []), 'req-' + r['id']), '</article>'])
+    parts.append(fold('basis', '岗位方向与判断依据', '分析方向的适用范围、经历依据及岗位能力要求', ''.join(basis)))
+
+    gaps = []
+    if not diags:
+        gaps.append(p('当前材料不足以支持额外差距判断，详见岗位要求与逐句审阅。'))
+    for n, d in enumerate(diags, 1):
+        gaps.extend(['<article class="analysis-item"><h3>' + esc(d.get('title') or label(d['gap_type'])) + '</h3>',
+                     p(label(d['gap_type']), 'item-status')])
+        if d.get('requirement_ids'):
+            gaps.append(field('对应岗位要求', '；'.join(reqmap[i]['description'] for i in d['requirement_ids'])))
+        gaps.extend([field('已有经历依据', d['demonstrates']), field('尚未充分支持的判断', d['does_not_demonstrate']),
+                     field('对岗位匹配的影响', d['impact'])])
+        if d.get('question'):
+            gaps.append(field('待核实事项', d['question'], 'question'))
+        gaps.extend([field('补充与修订建议', d['next_action']), support_fold(d['evidence_ids'], 'gap-source-' + str(n)), '</article>'])
+    parts.append(fold('gaps', '关键差距与补齐建议', f'{len(diags)} 项诊断：现有依据、岗位影响与补充建议', ''.join(gaps)))
+
+    order = {u['id']: i for i, u in enumerate(u for s in sources if s['kind'] == 'resume' for u in s['units'])}
+    groups = OrderedDict()
+    for v in sorted(reviews, key=lambda x: min(order[u] for u in x['unit_ids'])):
+        section = units[v['unit_ids'][0]].get('section') or '基本信息'
+        groups.setdefault(section, []).append(v)
+    sentence_parts = [p(f'已审阅 {count["reviewed"]} 个单元，其中 {count["awaiting_input"]} 个单元待补充事实。保留原句属于有效处理；待确认项尚未定稿。', 'coverage-note')]
+    for section, items in groups.items():
+        sentence_parts.append('<h3 class="subsection-title">' + esc(section) + '</h3>')
+        for v in items:
+            original = '\n'.join(units[u]['text'] for u in v['unit_ids'])
+            short = v.get('title') or re.sub(r'^\s*[#*\-]+\s*', '', original).strip()
+            if len(short) > 62:
+                short = short[:61] + '…'
+            content = ['<div class="review-grid"><div class="review-pane">', field('简历原文', original, 'original'),
+                       '</div><div class="review-pane">', field('已体现的岗位能力', v['capability']),
+                       field('处理依据与证据判断', v['reason']), field('目标岗位相关性', v['role_relevance']), '</div></div>']
+            if v.get('diagnosis_ids'):
+                content.append(field('关联差距诊断', '；'.join(diagmap[i].get('title') or label(diagmap[i]['gap_type']) for i in v['diagnosis_ids'])))
+            if v.get('text') and v['decision'] != 'keep':
+                content.append('<div class="field field-rewrite"><div class="rewrite-heading"><h4>建议修订文本</h4>'
+                               + ('<span>基于现有材料，待补充事实后定稿</span>' if v['decision'] == 'needs_input' else '')
+                               + '</div>' + prose(v['text']) + '</div>')
+            if v.get('question'):
+                content.append(field('待核实事项', v['question'], 'question'))
+            sentence_parts.append(fold('sentence-' + v['id'], short, label(v['decision']) + '；展开查看原文、岗位判断与修订依据',
+                                       ''.join(content), 'sentence', v['decision']))
+    parts.append(fold('sentences', '逐句审阅与修改建议', f'按简历顺序审阅全部 {count["resume_units"]} 个单元，保留待确认信息', ''.join(sentence_parts)))
+    if run.get('final_text'):
+        parts.append(fold('rewrite', '目标版本正文', '基于已提供事实整理的完整修订正文', prose(run['final_text'])))
+
+    action_parts = []
+    action_labels = {'edit': '可直接修订', 'evidence': '事实与材料补充', 'practice': '后续实践建议', 'decision': '求职方向选择'}
+    for kind, title_a in action_labels.items():
+        items = [a for a in run.get('actions', []) if a.get('type') == kind]
+        if items:
+            action_parts.append('<h3 class="subsection-title">' + title_a + '</h3><ol>')
+            action_parts.extend('<li>' + prose(a['text']) + '</li>' for a in items)
+            action_parts.append('</ol>')
+    if not action_parts:
+        action_parts.append(p('本次无额外行动项，具体修订意见见逐句审阅。'))
+    parts.append(fold('actions', '修订与事实补充清单', '区分可直接修订、待补充事实、后续实践与方向选择', ''.join(action_parts)))
+    source_parts = [p('本报告引用原文如下。位置对应提取文本的行号，不代表原 Word 的页码或排版。'), evidence_inline(list(evidence))]
+    parts.append(fold('source-records', '原文依据核对', '核对报告所引用的全部简历原文与来源位置', ''.join(source_parts)))
+    footer = ('本次为方向级分析。具体岗位匹配需结合实际 JD，进一步审阅能力要求与经历相关性。'
+              if run['mode'] != 'jd' else '本报告依据所提供的简历与 JD 分析，待确认信息以补充材料为准。')
+    parts.append('</div><footer class="report-footer">' + p(footer) + '</footer></main>')
+
+    css = (Path(__file__).resolve().parent.parent / 'assets' / 'report.css').read_text(encoding='utf-8')
+    js = """const folds=()=>[...document.querySelectorAll('details')];document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>folds().forEach(d=>d.open=b.dataset.action==='expand')));let printState=[];window.addEventListener('beforeprint',()=>{printState=folds().map(d=>d.open);folds().forEach(d=>d.open=true)});window.addEventListener('afterprint',()=>folds().forEach((d,i)=>d.open=!!printState[i]));"""
+    page = ('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            '<title>' + esc(title) + '</title><style>' + css + '</style></head><body>' + ''.join(parts) + '<script>' + js + '</script></body></html>')
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    target = out / 'resume-review.html'
+    target.write_text(sanitize_text(page), encoding='utf-8')
+    (out / 'validation.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    return {'html': str(target.resolve()), 'validation': result}
+
 
 def main():
-    ap=argparse.ArgumentParser()
-    ap.add_argument('input', nargs='+')
-    ap.add_argument('--output-dir', default=None)
-    ap.add_argument('--formats', nargs='+', default=['html'], choices=['html','docx'])
-    args=ap.parse_args()
-    for raw in args.input:
-        src=Path(raw)
-        out=Path(args.output_dir) if args.output_dir else src.parent
-        out.mkdir(parents=True,exist_ok=True)
-        md=src.read_text(encoding='utf-8')
-        if 'html' in args.formats:
-            title=next((inline_text(x.lstrip('# ').strip()) for x in md.splitlines() if x.startswith('# ')),src.stem)
-            body,headings=markdown_to_html(md)
-            toc=[]
-            for level,text,hid in headings:
-                if level in (2,3):
-                    toc.append(f'<a class="l{level}" href="#{hid}">{html.escape(text)}</a>')
-            nav=f'<nav class="toc"><div class="toc-title">目录</div>{"".join(toc)}</nav>' if toc else ''
-            top=f'<div class="topbar"><span class="brand">简历雷达</span><span class="subtitle">{html.escape(title)}</span></div>'
-            guide='<div class="reading-guide"><strong>阅读指引</strong><span>先看「1. 总体结论」和「8. 10 个最优先修改点」，再按左侧目录查看逐句体检。报告只基于你提供的信息，未做外部验证；所有「待补」都是缺失信息，没有编造事实。</span></div>'
-            next_steps='<div class="next-steps"><h2>下一步可以做什么</h2><p>如需进一步使用简历雷达，你可以：提供具体 JD 做正式匹配评分；补充项目原始数据、看板或代码链接用于核对证据；指定目标岗位方向生成定制改写；或继续输出 STAR 面试包。</p></div>'
-            page=f'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title><style>{CSS}</style></head><body>{top}<div class="layout">{nav}<article class="content">{guide}{body}{next_steps}</article></div></body></html>'
-
-            p=out/(src.stem+'.html'); p.write_text(page,encoding='utf-8'); print('HTML',p)
-        if 'docx' in args.formats:
-            p=out/(src.stem+'.docx'); ok,msg=markdown_to_docx(md,p)
-            print('DOCX',p if ok else 'SKIPPED '+msg)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('run_dir')
+    parser.add_argument('--output-dir', required=True)
+    args = parser.parse_args()
+    try:
+        result = render(args.run_dir, args.output_dir)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        print(json.dumps({'ok': False, 'error': str(exc)}, ensure_ascii=False))
+        return 1
+    print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 
-if __name__=='__main__': raise SystemExit(main())
+
+if __name__ == '__main__':
+    raise SystemExit(main())
