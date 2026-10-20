@@ -4,10 +4,8 @@ import argparse
 import html
 import json
 import re
-from collections import OrderedDict
 from pathlib import Path
 from workflow import read_json, validate_run
-from sanitize_report import sanitize_text
 
 LABELS = {
     'jd': '具体 JD 分析', 'direction': '岗位方向分析', 'explore': '基于简历的方向分析',
@@ -21,6 +19,7 @@ LABELS = {
     'jd_basis': 'JD 明示要求', 'role_standard': '方向级参考标准', 'hypothesis': '本次分析的暂定假设',
     'self_reported': '简历中的自述', 'user_confirmed': '用户补充说明', 'artifact_supported': '所附材料支持',
     'unclear': '尚待澄清',
+    'sample_jd': '检索 JD 样本要求',
 }
 
 
@@ -40,8 +39,24 @@ def prose(value):
     return ''.join(p(v) for v in re.split(r'\n\s*\n', str(value)) if v.strip())
 
 
+def subnumber(value):
+    digits='零一二三四五六七八九'
+    if value < 10: return '（'+digits[value]+'）'
+    if value < 100:
+        return '（'+(digits[value//10] if value>=20 else '')+'十'+(digits[value%10] if value%10 else '')+'）'
+    return '（'+str(value)+'）'
+
+
+def text_points(value):
+    return numbered_points([v.strip() for v in re.split(r'(?<=[。！？])\s*|\n+',str(value)) if v.strip()])
+
+
+def numbered_points(values):
+    return '<ol class="review-points">' + ''.join('<li>' + prose(v) + '</li>' for v in values if v) + '</ol>'
+
+
 def field(title, value, kind=''):
-    return '<div class="field' + (' field-' + kind if kind else '') + '"><h4>' + esc(title) + '</h4>' + prose(value) + '</div>'
+    return '<div class="field' + (' field-' + kind if kind else '') + '"><h4>' + esc(title) + '</h4>' + text_points(value) + '</div>'
 
 
 def icon(name):
@@ -65,24 +80,32 @@ def fold(ident, title, purpose, body, cls='report-section', decision=''):
 
 def overview(run, count):
     display = run.get('report_overview')
-    mode_note = '依据本次提供的 JD' if run['mode'] == 'jd' else '尚未提供具体 JD'
+    mode_note = '具体岗位定制' if run['mode'] == 'jd' else '岗位方向探索'
     body = ['<section class="overview" id="overall" aria-labelledby="overall-title"><div class="judgment">',
-            '<div class="overview-label"><h2 id="overall-title">整体判断</h2><span class="mode">' + mode_note + '</span></div>']
+            '<div class="overview-label"><h2 id="overall-title">一、整体判断</h2><span class="mode">' + mode_note + '</span></div>']
     if display:
         body.extend(['<h3 class="overview-headline">' + esc(display['headline']).replace('\n', '<br>') + '</h3>',
-                     '<div class="overview-intro">' + prose(display['introduction']) + '</div>',
-                     '<div class="judgment-points"><div><h4>' + icon('check') + '已有经历依据</h4>' + prose(display['evidence_summary']) + '</div>',
-                     '<div><h4>' + icon('search') + '关键证据缺口</h4>' + prose(display['gap_summary']) + '</div></div>'])
+                     '<div class="overview-intro">' + prose(display['introduction']) + '</div>'])
+        if display.get('assessment'):
+            body.append('<dl class="fit-assessment" aria-label="岗位要求对照">')
+            for n,item in enumerate(display['assessment'],1):
+                body.append('<div class="fit-row"><dt>'+esc(subnumber(n)+item['dimension'])+'<span class="fit-state fit-'+esc(item['status'])+'">'+esc({'met':'基本达标','partial':'部分达标','unknown':'尚不能判断','unmet':'不符合'}[item['status']])+'</span></dt><dd>'+esc(item['judgment'])+'</dd></div>')
+            body.append('</dl>')
+            body.append(p(display['fit_scope'],'fit-boundary'))
+            body.append(p(display['eligibility'],'fit-eligibility'))
+        else:
+            body.extend(['<div class="judgment-points"><div><h4>' + icon('check') + '（一）已有经历依据</h4>' + text_points(display['evidence_summary']) + '</div>',
+                         '<div><h4>' + icon('search') + '（二）关键证据缺口</h4>' + text_points(display['gap_summary']) + '</div></div>'])
     else:
-        body.append('<div class="overview-prose">' + prose(run['summary']) + '</div>')
+        body.append('<div class="overview-prose">' + text_points(run['summary']) + '</div>')
     body.append('</div>')
     priorities = display['priorities'] if display else []
     if not display:
         priorities = [{'title': '', 'text': a['text']} for a in run.get('actions', []) if a['type'] == 'evidence'][:2]
     if priorities:
         body.append('<aside class="advice" aria-label="优先补充事项"><h3>优先补充事项</h3><div class="advice-items">')
-        for item in priorities:
-            body.append('<div class="advice-item">' + icon('arrow') + '<div>'
+        for n,item in enumerate(priorities,1):
+            body.append('<div class="advice-item">' + '<span class="priority-number">'+str(n)+'.</span><div>'
                         + ('<h4>' + esc(item['title']) + '</h4>' if item['title'] else '') + prose(item['text']) + '</div></div>')
         body.append('</div>' + p('材料未呈现的部分仍需核实，不能据此认定候选人缺乏相应能力。', 'kind-note') + '</aside>')
     body.append('</section>')
@@ -100,7 +123,7 @@ def render(directory, output_dir):
     reqs = read_json(root / 'requirements.json')
     reqmap = {r['id']: r for r in reqs}
     evidence = {e['id']: e for e in read_json(root / 'evidence.json')}
-    diags = read_json(root / 'diagnosis.json')
+    diags = sorted(read_json(root / 'diagnosis.json'), key=lambda d: {'high':0,'medium':1,'low':2}[d.get('priority','medium')])
     diagmap = {d['id']: d for d in diags}
     reviews = read_json(root / 'sentence_review.json')
     count = result['counts']
@@ -129,107 +152,88 @@ def render(directory, output_dir):
              '<span class="report-category">岗位分析与逐句审阅</span></div></header><main class="page">',
              '<div class="page-heading"><div><h1>' + esc(title) + '</h1>' + p(subtitle) + '</div>',
              p('报告日期　' + str(run['analysis_date']), 'date') if run.get('analysis_date') else '',
+             p('报告修订　' + str(run['report_revision']), 'date') if run.get('report_revision') else '',
              '</div>', overview(run, count),
-             '<div class="report-intro"><div><h2>诊断明细</h2>' + p('展开栏目，查看分析依据与修订建议。') + '</div>',
+             '<div class="report-intro"><div><h2>诊断明细</h2>' + p('从原文出发，直接看哪里需要调整。') + '</div>',
              '<div class="report-controls" role="group" aria-label="控制报告详情的展开与收起"><button type="button" data-action="expand">展开全部详情</button><button type="button" data-action="collapse">收起全部详情</button></div></div>',
              '<div class="report-index">']
 
-    basis = [field('当前分析方向', run.get('target') or '方向尚待确定')]
-    if run.get('target_status') == 'provisional':
-        basis.append(p('当前方向依据简历材料暂定，尚待用户确认。', 'boundary-note'))
-    basis.append(field('分析范围', '经历与指标按所提供材料记录，未做外部事实核验。' +
-                       ('未提供具体 JD，岗位要求为方向级参考，不代表特定公司的招聘门槛或录用概率。'
-                        if run['mode'] != 'jd' else '岗位要求依据本次提供的 JD；解释性推断另行说明。')))
-    if run.get('assumptions'):
-        basis.append(field('假设与适用边界', '\n'.join(run['assumptions'])))
-    if run.get('report_overview'):
-        basis.append(field('整体判断详细说明', run['summary']))
-    for n, option in enumerate(run.get('role_options', []), 1):
-        basis.extend(['<article class="analysis-item"><h3>' + esc(option['role']) + '</h3>',
-                      field('方向支持依据', option['rationale']), field('待确认信息', option['unknowns']),
-                      support_fold(option['evidence_ids'], 'role-' + str(n)), '</article>'])
-    basis.append('<h3 class="subsection-title">目标方向的岗位能力要求</h3>')
-    for r in reqs:
-        basis.extend(['<article class="analysis-item"><h3>' + esc(r['description']) + '</h3>',
-                      p(label(r['support']) + '；' + ('JD 明示要求' if r['basis'] == 'jd' else label(r['basis'])), 'item-status'),
-                      field('岗位任务', r['task']), field('责任范围与决策深度', r['responsibility'] + '；' + r['decision_depth'])])
-        for uid in r.get('source_unit_ids', []):
-            basis.append(field('JD 原文', units[uid]['text'], 'original'))
-        if r.get('basis_note'):
-            basis.append(field('标准依据与适用范围', r['basis_note']))
-        basis.extend([support_fold(r.get('evidence_ids', []), 'req-' + r['id']), '</article>'])
-    parts.append(fold('basis', '岗位方向与判断依据', '分析方向的适用范围、经历依据及岗位能力要求', ''.join(basis)))
+    source_map={source['id']:source for source in sources}
+    jobs=[source for source in sources if source['kind']=='jd_sample']
+    options=run.get('role_options') or [{'role':run.get('target') or '方向待确定','rationale':'依据本次提供的简历与岗位要求进行评估。','jd_source_ids':[source['id'] for source in jobs if source['metadata']['role']==run.get('target')]}]
+    basis=[]
+    for n,option in enumerate(options,1):
+        basis.append('<article class="direction-recommendation"><h3>'+esc(subnumber(n)+option['role'])+'</h3>'+p(option['rationale'],'direction-reason'))
+        candidates=option.get('recommended_jd_source_ids',option.get('jd_source_ids',[]))
+        candidates=[source_map[i] for i in candidates if i in source_map and source_map[i].get('kind')=='jd_sample' and source_map[i]['metadata']['availability']!='closed'][:2]
+        if candidates:
+            basis.append('<div class="recommended-jobs"><span>岗位推荐</span><ul>')
+            for source in candidates:
+                meta=source['metadata']
+                state='页面显示开放' if meta['availability']=='open' else '状态待核实'
+                basis.append('<li><a href="'+esc(meta['url'])+'" target="_blank" rel="noopener noreferrer">'+esc(meta['title'])+'</a><span class="job-note">'+esc(meta['location']+' · '+state)+'</span></li>')
+            basis.append('</ul></div>')
+        else:
+            basis.append(p('岗位推荐：暂无已核实可投递的岗位。','job-note'))
+        basis.append('</article>')
+    if any(source['metadata']['availability']=='unknown' for source in jobs):
+        basis.append(p('岗位链接仅供核对；状态未确认的岗位，投递前请查看原页面。','direction-boundary'))
+    parts.append('<section class="report-section direction-section" id="basis"><header class="plain-section-heading"><h2>二、方向建议</h2></header><div class="fold-content">'+''.join(basis)+'</div></section>')
 
-    gaps = []
-    if not diags:
-        gaps.append(p('当前材料不足以支持额外差距判断，详见岗位要求与逐句审阅。'))
-    for n, d in enumerate(diags, 1):
-        gaps.extend(['<article class="analysis-item"><h3>' + esc(d.get('title') or label(d['gap_type'])) + '</h3>',
-                     p(label(d['gap_type']), 'item-status')])
-        if d.get('requirement_ids'):
-            gaps.append(field('对应岗位要求', '；'.join(reqmap[i]['description'] for i in d['requirement_ids'])))
-        gaps.extend([field('已有经历依据', d['demonstrates']), field('尚未充分支持的判断', d['does_not_demonstrate']),
-                     field('对岗位匹配的影响', d['impact'])])
-        if d.get('question'):
-            gaps.append(field('待核实事项', d['question'], 'question'))
-        gaps.extend([field('补充与修订建议', d['next_action']), support_fold(d['evidence_ids'], 'gap-source-' + str(n)), '</article>'])
-    parts.append(fold('gaps', '关键差距与补齐建议', f'{len(diags)} 项诊断：现有依据、岗位影响与补充建议', ''.join(gaps)))
-
-    order = {u['id']: i for i, u in enumerate(u for s in sources if s['kind'] == 'resume' for u in s['units'])}
-    groups = OrderedDict()
-    for v in sorted(reviews, key=lambda x: min(order[u] for u in x['unit_ids'])):
-        section = units[v['unit_ids'][0]].get('section') or '基本信息'
-        groups.setdefault(section, []).append(v)
-    sentence_parts = [p(f'已审阅 {count["reviewed"]} 个单元，其中 {count["awaiting_input"]} 个单元待补充事实。保留原句属于有效处理；待确认项尚未定稿。', 'coverage-note')]
-    for section, items in groups.items():
-        sentence_parts.append('<h3 class="subsection-title">' + esc(section) + '</h3>')
-        for v in items:
-            original = '\n'.join(units[u]['text'] for u in v['unit_ids'])
-            short = v.get('title') or re.sub(r'^\s*[#*\-]+\s*', '', original).strip()
-            if len(short) > 62:
-                short = short[:61] + '…'
-            content = ['<div class="review-grid"><div class="review-pane">', field('简历原文', original, 'original'),
-                       '</div><div class="review-pane">', field('已体现的岗位能力', v['capability']),
-                       field('处理依据与证据判断', v['reason']), field('目标岗位相关性', v['role_relevance']), '</div></div>']
-            if v.get('diagnosis_ids'):
-                content.append(field('关联差距诊断', '；'.join(diagmap[i].get('title') or label(diagmap[i]['gap_type']) for i in v['diagnosis_ids'])))
-            if v.get('text') and v['decision'] != 'keep':
-                content.append('<div class="field field-rewrite"><div class="rewrite-heading"><h4>建议修订文本</h4>'
-                               + ('<span>基于现有材料，待补充事实后定稿</span>' if v['decision'] == 'needs_input' else '')
-                               + '</div>' + prose(v['text']) + '</div>')
-            if v.get('question'):
-                content.append(field('待核实事项', v['question'], 'question'))
-            sentence_parts.append(fold('sentence-' + v['id'], short, label(v['decision']) + '；展开查看原文、岗位判断与修订依据',
-                                       ''.join(content), 'sentence', v['decision']))
-    parts.append(fold('sentences', '逐句审阅与修改建议', f'按简历顺序审阅全部 {count["resume_units"]} 个单元，保留待确认信息', ''.join(sentence_parts)))
+    order={u['id']:i for i,u in enumerate(u for source in sources if source['kind']=='resume' for u in source['units'])}
+    ordered=sorted(reviews,key=lambda v:min(order[u] for u in v['unit_ids']))
+    main=[p(f'共 {count["reviewed"]} 处原文，{count["awaiting_input"]} 处待确认。每条展开后依次查看原文、改后、原因与建议。','coverage-note')]
+    anchored=set()
+    for n,v in enumerate(ordered,1):
+        original='\n'.join(units[u]['text'] for u in v['unit_ids'])
+        short=v.get('title') or re.sub(r'^\s*[#*\-]+\s*','',original).strip()
+        if len(short)>55: short=short[:54]+'…'
+        content=['<div class="sentence-comparison"><div class="sentence-field original-column"><h4>原文</h4><blockquote>'+esc(original)+'</blockquote></div>']
+        if v['decision']=='keep':
+            after=p('保留原文。','unchanged-copy')
+        elif v['decision']=='drop':
+            after=p('建议从目标版本删除。原文保留在来源记录中。')
+        elif v.get('text'):
+            after=prose(v['text'])
+            # A short factual lead remains part of the validated rewrite text.
+            lead=re.match(r'^【([^【】\n]{1,32})】',v['text'])
+            if lead:
+                after='<p class="rewrite-lead"><strong>'+esc(lead.group(1))+'</strong></p>'+prose(v['text'][lead.end():].lstrip())
+            if v['decision']=='needs_input':after+=p('保守表达，关键事实确认后再定稿。','pending-copy')
+        else:
+            after=p('暂不定稿，先确认下方问题。','pending-copy')
+        content.append('<div class="sentence-field revised-column"><h4>改后</h4>'+after+'</div></div>')
+        # Global diagnosis records are never pasted into a sentence: the local reason and
+        # question must be written against this exact original text by the reviewing module.
+        notes=[part.strip() for part in v['reason'].split('\n') if part.strip()]
+        if v.get('question'):notes.append('需要确认：'+v['question'])
+        anchors=[]
+        for did in v.get('diagnosis_ids',[]):
+            if did not in anchored:
+                anchors.append('<span id="diagnosis-'+esc(did)+'" class="diagnosis-anchor"></span>');anchored.add(did)
+        content.append('<div class="sentence-field sentence-reasons">'+''.join(anchors)+'<h4>原因与建议</h4>'+numbered_points(list(dict.fromkeys(notes)))+'</div>')
+        locations=[]
+        for uid in v['unit_ids']:
+            u=units[uid];locations.append((u.get('section') or '原文')+' · 第'+str(u['line'])+'行')
+        content.append(p('来源：'+'；'.join(locations),'source-location'))
+        main.append(fold('sentence-'+v['id'],subnumber(n)+short,label(v['decision']),''.join(content),'sentence',v['decision']))
     if run.get('final_text'):
-        parts.append(fold('rewrite', '目标版本正文', '基于已提供事实整理的完整修订正文', prose(run['final_text'])))
-
-    action_parts = []
-    action_labels = {'edit': '可直接修订', 'evidence': '事实与材料补充', 'practice': '后续实践建议', 'decision': '求职方向选择'}
-    for kind, title_a in action_labels.items():
-        items = [a for a in run.get('actions', []) if a.get('type') == kind]
-        if items:
-            action_parts.append('<h3 class="subsection-title">' + title_a + '</h3><ol>')
-            action_parts.extend('<li>' + prose(a['text']) + '</li>' for a in items)
-            action_parts.append('</ol>')
-    if not action_parts:
-        action_parts.append(p('本次无额外行动项，具体修订意见见逐句审阅。'))
-    parts.append(fold('actions', '修订与事实补充清单', '区分可直接修订、待补充事实、后续实践与方向选择', ''.join(action_parts)))
-    source_parts = [p('本报告引用原文如下。位置对应提取文本的行号，不代表原 Word 的页码或排版。'), evidence_inline(list(evidence))]
-    parts.append(fold('source-records', '原文依据核对', '核对报告所引用的全部简历原文与来源位置', ''.join(source_parts)))
+        main.append('<div class="final-copy"><h3>完整修改稿</h3>'+prose(run['final_text'])+'</div>')
+    parts.append('<section class="report-section review-section" id="gaps"><header class="plain-section-heading"><h2>三、逐句审阅</h2></header><div class="fold-content">'+''.join(main)+'</div></section>')
     footer = ('本次为方向级分析。具体岗位匹配需结合实际 JD，进一步审阅能力要求与经历相关性。'
               if run['mode'] != 'jd' else '本报告依据所提供的简历与 JD 分析，待确认信息以补充材料为准。')
+    scope_notes='；'.join(run.get('report_scope_notes',[]))
+    if scope_notes: footer+=' '+scope_notes
     parts.append('</div><footer class="report-footer">' + p(footer) + '</footer></main>')
 
     css = (Path(__file__).resolve().parent.parent / 'assets' / 'report.css').read_text(encoding='utf-8')
-    js = """const folds=()=>[...document.querySelectorAll('details')];document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>folds().forEach(d=>d.open=b.dataset.action==='expand')));let printState=[];window.addEventListener('beforeprint',()=>{printState=folds().map(d=>d.open);folds().forEach(d=>d.open=true)});window.addEventListener('afterprint',()=>folds().forEach((d,i)=>d.open=!!printState[i]));"""
+    js = """const folds=()=>[...document.querySelectorAll('details.sentence')];document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>folds().forEach(d=>d.open=b.dataset.action==='expand')));function revealHash(){const target=document.getElementById(decodeURIComponent(location.hash.slice(1)));if(!target)return;let parent=target.parentElement;while(parent){if(parent.tagName==='DETAILS')parent.open=true;parent=parent.parentElement}requestAnimationFrame(()=>target.scrollIntoView({block:'center'}))}window.addEventListener('hashchange',revealHash);if(location.hash)revealHash();let printState=[];window.addEventListener('beforeprint',()=>{printState=folds().map(d=>d.open);folds().forEach(d=>d.open=true)});window.addEventListener('afterprint',()=>folds().forEach((d,i)=>d.open=!!printState[i]));"""
     page = ('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             '<title>' + esc(title) + '</title><style>' + css + '</style></head><body>' + ''.join(parts) + '<script>' + js + '</script></body></html>')
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     target = out / 'resume-review.html'
-    target.write_text(sanitize_text(page), encoding='utf-8')
+    target.write_text(page, encoding='utf-8')
     (out / 'validation.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return {'html': str(target.resolve()), 'validation': result}
 

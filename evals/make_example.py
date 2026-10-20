@@ -34,7 +34,7 @@ def build_example(parent,mode):
                      'description':description,'task':task,'responsibility':responsibility,'decision_depth':depth,
                      'importance':'core','support':support,'evidence_ids':eids})
     write_json(root/'requirements.json',reqs)
-    diagnosis={'id':'D1','scope':'role','gap_type':'evidence_missing','requirement_ids':['R2'],'evidence_ids':['E3','E4'],
+    diagnosis={'id':'D1','issue_key':'prototype-validation-method','priority':'high','scope':'role','gap_type':'evidence_missing','requirement_ids':['R2'],'evidence_ids':['E3','E4'],
                'demonstrates':'已有原型交付，并提出上线后观察咨询量的计划。',
                'does_not_demonstrate':'材料尚未说明咨询量如何对应入口问题，或是否另有任务完成率等验证方法。',
                'impact':'能支持设计与交付经历；对于要求验证和迭代的任务，招聘者仍难判断候选人的效果判断方法。',
@@ -60,6 +60,10 @@ def build_example(parent,mode):
         run.update(target='产品实习',target_status='provisional',assumptions=['教学案例假设用户要求直接判断；按访谈与原型证据暂定产品方向，真实使用须尊重用户意愿。'],
             role_options=[{'role':'产品实习','rationale':'访谈、问题归纳与原型交付有直接材料支持。','unknowns':'验证方法、偏好和可到岗条件待确认。','evidence_ids':['E2','E3']},
                           {'role':'运营支持','rationale':'记录核对与信息整理可构成执行类任务的迁移线索。','unknowns':'尚不能判断独立运营策略或业务结果；仅是备选方向。','evidence_ids':['E5']}])
+        for option in run['role_options']:
+            option.update(transfer_difficulty='需要核实已有任务与目标责任的差异。',next_action='确认偏好并检索目标岗位。',jd_source_ids=[],search_limitation='离线虚构教学案例，未检索真实岗位。')
+    if mode!='jd':
+        run['market_search']={'status':'not_needed','limitations':'离线虚构教学案例模拟用户明确只评估材料；不声称执行真实检索。','attempts':[]}
     write_json(root/'run.json',run)
     return root
 

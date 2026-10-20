@@ -1,7 +1,7 @@
 {
   "name": "resume-radar",
-  "version": "0.03",
-  "description": "简历雷达：根据JD或目标方向诊断岗位差距，追问关键事实并全量逐句审阅。",
+  "version": "0.12",
+  "description": "简历雷达：探索真实岗位、共享证据诊断，并按任务完成忠实简历优化。",
   "author": {
     "name": "xsh-Lan"
   },
@@ -18,8 +18,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "简历雷达（resume radar）",
-    "shortDescription": "岗位差距诊断、关键事实追问与全量逐句审阅",
-    "longDescription": "通过岗位任务、责任深度与原文证据诊断差距，支持有JD、无JD有方向及方向探索。逐句给出保留、改写、合并、压缩、建议删除或追问，提供可追溯报告。",
+    "shortDescription": "真实岗位探索、统一诊断与按需简历优化",
+    "longDescription": "只有简历也能探索有依据的方向并检索真实JD；已有目标则直接诊断和定制。共享事实与诊断，重要修改优先展示，支持完整逐句审阅。润色、岗位分析和面试训练可独立使用。",
     "developerName": "xsh-Lan",
     "category": "Productivity",
     "capabilities": [
@@ -27,9 +27,9 @@
       "Write"
     ],
     "defaultPrompt": [
-      "调用简历雷达，根据JD逐句诊断我的简历",
-      "没有JD，按我的目标方向分析经历与岗位的差距",
-      "根据简历提出有依据的方向，并逐句审阅"
+      "评估我的简历，检索真实JD并比较适合的岗位方向",
+      "针对这份JD诊断差距并优化简历",
+      "只润色这段经历，保留真实贡献和项目阶段"
     ],
     "brandColor": "#3561C8"
   }

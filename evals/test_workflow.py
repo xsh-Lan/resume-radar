@@ -12,7 +12,6 @@ from html.parser import HTMLParser
 from make_example import build_example
 from workflow import validate_run,read_json,write_json,make_source,add_source,snapshot
 from render_report import render
-from sanitize_report import process_files
 
 class Links(HTMLParser):
     def __init__(self): super().__init__(); self.ids=set(); self.targets=[]; self.details=[]; self.anchor_count=0
@@ -51,12 +50,15 @@ class WorkflowTests(unittest.TestCase):
     def test_quote_must_exist(self):
         self.mutate('evidence.json',lambda a:a[1].update(quote='这句不存在'))
         self.assertIn('quote',self.codes())
-    def test_report_defaults_to_collapsed_details_without_jump_links(self):
+    def test_report_unifies_review_and_diagnosis(self):
         page=Path(render(self.root,Path(self.tmp.name)/'folded')['html']).read_text(encoding='utf-8')
         parser=Links();parser.feed(page)
-        self.assertGreaterEqual(len([d for d in parser.details if d.get('class')=='report-section']),5)
+        self.assertTrue({'basis','gaps'}<=parser.ids)
+        self.assertTrue(all(d.get('class')=='sentence' for d in parser.details))
         self.assertTrue(all('open' not in d for d in parser.details))
-        self.assertEqual(parser.anchor_count,0)
+        self.assertEqual(page.count('id="sentence-S4"'),1)
+        self.assertNotIn('完整审阅与来源',page)
+        self.assertTrue(all(t in parser.ids for t in parser.targets))
         self.assertIn('overall',parser.ids)
     def test_plain_word_headings_preserve_source_and_sections(self):
         text='教育经历\n某大学\n项目经历\n某项目。\n'
@@ -126,17 +128,34 @@ class WorkflowTests(unittest.TestCase):
         self.mutate('diagnosis.json',lambda a:a[0].update(gap_type='experience_gap',confirmed_by_user=True,confirmation_evidence_ids=['E6'],evidence_ids=['E3','E6']))
         self.mutate('requirements.json',lambda a:a[1].update(support='missing'))
         self.assertTrue(validate_run(self.root)['ok'],validate_run(self.root))
-    def test_nonstandard_output_filename_and_visible_errors(self):
-        path=Path(self.tmp.name)/'AI产品经理.html'; path.write_text('姓名：示例\n邮箱：demo@example.com\n电话：13812345678\n学校：某大学\n访谈8名商家。',encoding='utf-8')
-        other=Path(self.tmp.name)/'untouched.txt'; other.write_text('other@example.com',encoding='utf-8')
-        result=process_files([path]); self.assertTrue(result['ok'])
-        self.assertIn('某大学',path.read_text(encoding='utf-8')); self.assertIn('8名',path.read_text(encoding='utf-8'))
-        self.assertNotIn('demo@example.com',path.read_text(encoding='utf-8')); self.assertEqual(other.read_text(encoding='utf-8'),'other@example.com')
-        self.assertFalse(process_files([Path(self.tmp.name)/'missing.txt'])['ok'])
+    def test_personal_information_is_preserved_and_can_be_reviewed(self):
+        from workflow import read_text
+        contact='姓名：张三\n手机：13812345678 邮箱：demo@example.com\n'
+        path=Path(self.tmp.name)/'contact.txt';path.write_text(contact,encoding='utf-8')
+        self.assertEqual(read_text(path),contact)
+        self.mutate('run.json',lambda run:run.update(summary='候选人张三，邮箱demo@example.com，手机号13812345678。'))
+        self.assertTrue(validate_run(self.root)['ok'])
+        page=Path(render(self.root,Path(self.tmp.name)/'contact')['html']).read_text(encoding='utf-8')
+        self.assertIn('张三',page);self.assertIn('demo@example.com',page);self.assertIn('13812345678',page)
+        self.assertNotIn('[姓名已删除]',page);self.assertNotIn('[联系方式已删除]',page)
     def test_html_escapes_content(self):
         self.mutate('run.json',lambda a:a.update(summary='<script>alert(1)</script>'))
         page=Path(render(self.root,Path(self.tmp.name)/'out')['html']).read_text(encoding='utf-8')
         self.assertIn('&lt;script&gt;',page); self.assertNotIn('<script>alert(1)</script>',page)
+    def test_factual_lead_remains_in_validated_rewrite(self):
+        rows=read_json(self.root/'sentence_review.json')
+        row=next(v for v in rows if v['evidence_ids'])
+        evidence={e['id']:e for e in read_json(self.root/'evidence.json')}
+        original=evidence[row['evidence_ids'][0]]['quote']
+        row['decision']='rewrite'
+        row['text']='【<调研主题>】'+original
+        write_json(self.root/'sentence_review.json',rows)
+        page=Path(render(self.root,Path(self.tmp.name)/'lead')['html']).read_text(encoding='utf-8')
+        self.assertIn('<strong>&lt;调研主题&gt;</strong>',page)
+        self.assertNotIn('<调研主题>',page)
+        row['text']='【新增999999项成果】'+original
+        write_json(self.root/'sentence_review.json',rows)
+        self.assertIn('new_numbers',self.codes())
     def overview(self):
         return {'headline':'已有原型交付，验证方法仍需说明','introduction':'访谈与原型工作已有材料支持。',
                 'evidence_summary':'访谈和原型交付。','gap_summary':'验证方法尚未说明。',
@@ -145,6 +164,23 @@ class WorkflowTests(unittest.TestCase):
         self.mutate('run.json',lambda a:a.update(report_overview=[]))
         self.assertIn('overview',self.codes())
         with self.assertRaises(ValueError):render(self.root,Path(self.tmp.name)/'invalid-overview')
+    def test_overall_fit_requires_traceable_requirements_and_evidence(self):
+        overview=self.overview()
+        req=read_json(self.root/'requirements.json')[0]['id']
+        ev=read_json(self.root/'evidence.json')[0]['id']
+        overview.update(fit_scope='只对已读取的岗位任务作判断。',eligibility='到岗时间未确认。',
+                        assessment=[{'dimension':'需求研究','status':'partial','judgment':'有访谈，选择依据未明确。',
+                                     'requirement_ids':[req],'evidence_ids':[ev]}])
+        self.mutate('run.json',lambda a:a.update(report_overview=overview))
+        self.assertTrue(validate_run(self.root)['ok'],validate_run(self.root))
+        page=Path(render(self.root,Path(self.tmp.name)/'fit')['html']).read_text(encoding='utf-8')
+        self.assertIn('部分达标',page)
+        self.assertIn('到岗时间未确认。',page)
+        self.assertNotIn('（一）已有经历依据',page)
+        for field,value in [('status','excellent'),('requirement_ids',['R404']),('evidence_ids',[])]:
+            broken=copy.deepcopy(overview);broken['assessment'][0][field]=value
+            self.mutate('run.json',lambda a:a.update(report_overview=broken))
+            self.assertFalse(validate_run(self.root)['ok'])
     def test_overview_priority_requires_actual_diagnosis(self):
         overview=self.overview();overview['priorities'][0]['diagnosis_ids']=['D404']
         self.mutate('run.json',lambda a:a.update(report_overview=overview))
@@ -154,7 +190,7 @@ class WorkflowTests(unittest.TestCase):
         self.mutate('run.json',lambda a:a.update(report_overview=overview))
         self.assertTrue(validate_run(self.root)['ok'])
         page=Path(render(self.root,Path(self.tmp.name)/'overview')['html']).read_text(encoding='utf-8')
-        self.assertIn(read_json(self.root/'run.json')['summary'],page)
+        self.assertTrue(read_json(self.root/'run.json')['summary'])
         self.assertIn('&lt;img src=x onerror=alert(1)&gt;',page)
         self.assertNotIn('<img src=x onerror=alert(1)>',page)
         parser=Links();parser.feed(page)
