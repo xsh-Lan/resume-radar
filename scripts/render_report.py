@@ -124,7 +124,7 @@ def render(directory, output_dir):
     mode = label(run['mode'])
     stage = run.get('stage')
     subtitle = mode + ('，目标阶段：' + stage if stage and stage != 'unknown' else '') + '。'
-    brand = '<div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="3" width="22" height="26" rx="6"/><path d="M11 11h10M11 16h7M11 21h4"/><circle cx="24" cy="24" r="6" fill="#fff"/><path d="m21 24 2 2 4-4"/></svg><span>简历雷达</span></div>'
+    brand = '<div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="3" width="22" height="26" rx="6"/><path d="M11 11h10M11 16h7M11 21h4"/><circle cx="24" cy="24" r="6" fill="#fff"/><path d="m21 24 2 2 4-4"/></svg><span>简历雷达（resume radar）</span></div>'
     parts = ['<header class="topbar"><div class="topbar-inner">', brand,
              '<span class="report-category">岗位分析与逐句审阅</span></div></header><main class="page">',
              '<div class="page-heading"><div><h1>' + esc(title) + '</h1>' + p(subtitle) + '</div>',

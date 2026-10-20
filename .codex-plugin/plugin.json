@@ -1,6 +1,6 @@
 {
-  "name": "resume-coach",
-  "version": "2.3.0",
+  "name": "resume-radar",
+  "version": "0.03",
   "description": "简历雷达：根据JD或目标方向诊断岗位差距，追问关键事实并全量逐句审阅。",
   "author": {
     "name": "xsh-Lan"
@@ -17,7 +17,7 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "简历雷达",
+    "displayName": "简历雷达（resume radar）",
     "shortDescription": "岗位差距诊断、关键事实追问与全量逐句审阅",
     "longDescription": "通过岗位任务、责任深度与原文证据诊断差距，支持有JD、无JD有方向及方向探索。逐句给出保留、改写、合并、压缩、建议删除或追问，提供可追溯报告。",
     "developerName": "xsh-Lan",

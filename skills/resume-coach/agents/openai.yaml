@@ -1,4 +1,0 @@
-interface:
-  display_name: "简历雷达"
-  short_description: "分析JD或求职方向与经历之间的差距，追问关键事实并逐句审阅简历"
-  default_prompt: "使用 $resume-coach，根据我的简历和已有JD或目标方向诊断岗位差距，并逐句审阅。"

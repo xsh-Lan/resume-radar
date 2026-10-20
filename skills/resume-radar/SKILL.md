@@ -1,17 +1,17 @@
 ---
-name: resume-coach
+name: resume-radar
 description: 简历雷达总入口。根据具体 JD、预期岗位方向或简历中支持的候选方向，分析岗位差距、追问关键事实并逐句审阅简历；适用于要求深入体检、岗位定制或判断求职方向的任务。
 ---
 
-# 简历雷达
+# 简历雷达（resume radar）
 
 交付可追溯的岗位判断与全量逐句审阅。先解释经历对岗位工作的支撑程度，再决定各句的留改删合。目标方向由用户意愿和实际任务证据共同确定。
 
 ## 定位与加载
 
-本文件所在位置为 `<plugin-root>/skills/resume-coach/SKILL.md`。下文路径均从插件根目录解析，执行脚本使用绝对路径。调用专业模块时读取本插件中指定的 SKILL 文件，避免加载本机另一个同名版本。Skill 是工作指令模块；按任务读取，不把阅读四份指令声称为四个独立 Agent 已执行。
+本文件所在位置为 `<plugin-root>/skills/resume-radar/SKILL.md`。下文路径均从插件根目录解析，执行脚本使用绝对路径。调用专业模块时读取本插件中指定的 SKILL 文件，避免加载本机另一个同名版本。Skill 是工作指令模块；按任务读取，不把阅读四份指令声称为四个独立 Agent 已执行。
 
-先读取 `standards/diagnosis.md`。导出文件时再读 `standards/data-contract.md`。模式分支见 `skills/resume-coach/references/modes.md`。
+先读取 `standards/diagnosis.md`。导出文件时再读 `standards/data-contract.md`。模式分支见 `skills/resume-radar/references/modes.md`。
 
 ## 工作流与完成条件
 

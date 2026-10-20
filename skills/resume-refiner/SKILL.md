@@ -5,7 +5,7 @@ description: 简历雷达中的逐句审阅与定制模块。依据已确认的�
 
 # 逐句审阅与全文定稿
 
-读取 `<plugin-root>/standards/diagnosis.md`。没有岗位判断时先进入本插件 `skills/resume-coach/SKILL.md` 的模式选择；用户只要求局部文字编辑时尊重范围，可直接完成局部审阅并披露未做完整岗位诊断。
+读取 `<plugin-root>/standards/diagnosis.md`。没有岗位判断时先进入本插件 `skills/resume-radar/SKILL.md` 的模式选择；用户只要求局部文字编辑时尊重范围，可直接完成局部审阅并披露未做完整岗位诊断。
 
 ## 审阅顺序
 
