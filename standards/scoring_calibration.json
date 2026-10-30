@@ -1,0 +1,6 @@
+{
+  "version": "2.0",
+  "status": "not_calibrated",
+  "default": "requirement_support_states",
+  "note": "旧版分数锚点已停用，内容效果需独立案例与人工标注。"
+}
