@@ -1,6 +1,6 @@
 # Third-party notices
 
-This local personal plugin bundles or adapts the following skill sources for personal use:
+This plugin bundles or adapts the following skill sources:
 
 1. `resume-refiner`
    - Source: https://github.com/bocchii-the-code/resume-skills
@@ -12,6 +12,6 @@ This local personal plugin bundles or adapts the following skill sources for per
 
 3. `interview-prep`
    - Source: https://github.com/lan1177/interview-prep
-   - A license file was not present in the locally installed copy; use is limited to this local personal workspace unless the source owner grants broader rights.
+   - The upstream README declares the MIT license; the upstream repository does not include a separate license file.
 
 The de-identified `excellent-resume-patterns` library was created locally for this plugin and does not include the original resume files or personally identifying details.
