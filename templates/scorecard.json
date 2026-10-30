@@ -1,0 +1,13 @@
+{
+  "version": "2.0",
+  "purpose": "requirement_support",
+  "states": [
+    "direct",
+    "transferable",
+    "partial",
+    "unknown",
+    "missing",
+    "conflicting"
+  ],
+  "score": null
+}
