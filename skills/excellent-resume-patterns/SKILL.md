@@ -5,9 +5,9 @@ description: 简历雷达的参考库。按目标任务、职级、个人作用�
 
 # 条件化参考库
 
-已有十类背景模式保留为检索线索，来源见 `references/provenance.md`。它们没有经过录用结果校准，不能当成职业成功标准或候选人事实来源。
+本库仅保留虚构教学示例与通用写作方法，来源边界见 `references/provenance.md`。
 
-先读 `reference_cards.json`，按 task、career_stage、actor_scope、project_state 选择必要的少量卡片；再按需读 `pattern_index.json` 找迁移线索。用户事实和目标要求优先。原始参考文件留在用户私有档案，运行不需要读取原件。
+先读 `reference_cards.json`，按 task、career_stage、actor_scope、project_state 选择必要的少量卡片。用户事实和目标要求优先。用户提供的参考简历及其衍生案例模式不随插件提供。
 
 返回：选用卡片及适用理由、必要事实是否齐备、可支持与不能支持的能力、表达结构与反例。保持用户的实际贡献和项目阶段。没有精确数字时可用具体产物、判断依据和任务范围，不要求固定数字比例。
 
