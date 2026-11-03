@@ -61,7 +61,7 @@ def initialize(args):
          'summary':'','actions':[],'final_text':'','display_mode':'focused',
          'market_search':{'status':'not_needed' if args.jd else 'pending','limitations':'','attempts':[]},
          'review':{'status':'pending','findings':[]}}
-    if getattr(args, 'guided', False): run['workflow_version'] = '0.15'
+    if getattr(args, 'guided', False): run['workflow_version'] = '0.16'
     if run['mode'] == 'general':
         run['market_search'] = {'status':'not_needed','limitations':'用户选择通用简历诊断，不作目标岗位匹配或市场检索。','attempts':[]}
     dest.mkdir(parents=True)
@@ -156,14 +156,19 @@ def validate_run(directory):
             units[u['id']]=u
             if s.get('kind')=='resume': resume_units[u['id']]=u
     if not resume_units: fail('source','No resume units')
-    if run.get('workflow_version') in {'0.14', '0.15'}:
+    if run.get('workflow_version') in {'0.14', '0.15', '0.16'}:
         try:
             from confirm import execution_ready
             confirmed = execution_ready(root)
-            expected = {'01':'jd','02':'direction','03':'general'}[confirmed['stage1']['route']]
+            single = confirmed.get('kind') == 'single_target'
+            if run.get('workflow_version') == '0.16' and not single:
+                fail('confirmation','Use one combined target decision for new runs')
+            goal = confirmed['target_decision'] if single else confirmed['stage1']
+            output = confirmed['outputs'] if single else confirmed['stage2']
+            expected = {'01':'jd','02':'direction','03':'general'}[goal['route']]
             if run.get('mode') != expected: fail('confirmation','Run mode does not match confirmed route')
-            if not confirmed['stage2']['optimized_resume'] and run.get('final_text'): fail('confirmation','Final resume was not requested')
-            if confirmed['stage2']['optimized_resume'] and not run.get('final_text','').strip(): fail('confirmation','Requested optimized resume is missing')
+            if not output['optimized_resume'] and run.get('final_text'): fail('confirmation','Final resume was not requested')
+            if output['optimized_resume'] and not run.get('final_text','').strip(): fail('confirmation','Requested optimized resume is missing')
         except (OSError,ValueError,KeyError) as exc: fail('confirmation',str(exc))
     mode=run.get('mode')
     if mode not in {'jd','direction','explore','general'}: fail('mode',str(mode))

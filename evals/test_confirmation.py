@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from confirm import confirm, execution_ready, record_reply
+from confirm import confirm, execution_ready, record_reply, record_target
 from workflow import read_json, write_json, validate_run
 from make_example import build_example
 
@@ -45,6 +45,55 @@ class ConfirmationTests(unittest.TestCase):
         self.assertIn('stage2', execution_ready(self.root))
         (self.root / 'confirmation-replies/stage1.txt').write_text('changed', encoding='utf-8')
         with self.assertRaises(ValueError): execution_ready(self.root)
+
+    def target(self, source='provided', **changes):
+        answer = self.root / 'target-answer.txt'
+        answer.write_text('使用我提供的JD；若不明确则由你推荐。', encoding='utf-8')
+        values = dict(target_choice='specified', target='产品实习', jd_source=source,
+                      selected_jd_ids=[] if source == 'none' else ['JD'])
+        values.update(changes)
+        return record_target(self.root, values, answer)
+
+    def test_single_target_has_fixed_outputs_and_no_second_gate(self):
+        for source in ('provided', 'none'):
+            state = self.target(source)
+            self.assertNotIn('stage2', state)
+            self.assertTrue(state['outputs']['optimized_resume'])
+            self.assertTrue(state['outputs']['sentence_review'])
+            self.assertFalse(state['outputs']['followup_questions'])
+            self.assertEqual(execution_ready(self.root)['kind'], 'single_target')
+
+    def test_delegated_search_records_resolved_job_without_another_answer(self):
+        sources = read_json(self.root / 'sources.json')
+        job = next(s for s in sources['sources'] if s['id'] == 'JD')
+        job['kind'] = 'jd_sample'
+        write_json(self.root / 'sources.json', sources)
+        state = self.target('auto', target_choice='unclear', delegated=True)
+        self.assertTrue(state['target_decision']['delegated'])
+        self.assertEqual(execution_ready(self.root)['target_decision']['route'], '02')
+        with self.assertRaises(ValueError): self.target('auto', selected_jd_ids=[])
+
+    def test_single_target_rejects_changed_sources_and_fake_output_gate(self):
+        self.target()
+        sources = read_json(self.root / 'sources.json')
+        next(s for s in sources['sources'] if s['id'] == 'JD')['sha256'] = 'changed'
+        write_json(self.root / 'sources.json', sources)
+        with self.assertRaises(ValueError): execution_ready(self.root)
+        self.target()
+        state = read_json(self.root / 'confirmation.json')
+        state['outputs']['followup_questions'] = True
+        write_json(self.root / 'confirmation.json', state)
+        with self.assertRaises(ValueError): execution_ready(self.root)
+
+    def test_v016_accepts_single_target_and_requires_optimized_text(self):
+        self.target()
+        run = read_json(self.root / 'run.json')
+        run['workflow_version'] = '0.16'
+        run['final_text'] = '产品实习'
+        write_json(self.root / 'run.json', run)
+        self.assertTrue(validate_run(self.root)['ok'])
+        run['final_text'] = ''; write_json(self.root / 'run.json', run)
+        self.assertIn('confirmation', {e['code'] for e in validate_run(self.root)['errors']})
 
     def test_three_routes_require_real_confirmation(self):
         for source, route in [('provided','01'),('auto','02'),('none','03')]:

@@ -11,6 +11,8 @@ from urllib.parse import urlsplit, parse_qs
 from workflow import read_json, write_json
 
 ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_OUTPUTS = {'sentence_review': True, 'optimized_resume': True,
+                   'modification_scope': '全文', 'followup_questions': False}
 
 
 def fingerprint(value):
@@ -71,6 +73,23 @@ def confirm(root, stage, values, prefill):
 def execution_ready(root):
     root = Path(root)
     state = read_json(root / 'confirmation.json')
+    if state.get('kind') == 'single_target':
+        goal = state.get('target_decision', {})
+        if state.get('target_hash') != fingerprint(goal): raise ValueError('求职目标已变化，请更新目标记录')
+        if state.get('outputs') != DEFAULT_OUTPUTS: raise ValueError('完整任务使用默认输出，不设输出确认关卡')
+        sources = {s['id']: s for s in read_json(root / 'sources.json')['sources']}
+        resume = next(s for s in sources.values() if s['kind'] == 'resume')
+        if state.get('resume_sha256') != resume['sha256']: raise ValueError('简历来源已变化，请重新核对目标')
+        for ident, sha in state['source_hashes'].items():
+            if ident not in sources or sources[ident]['sha256'] != sha:
+                raise ValueError('目标 JD 已变化，请核对目标')
+            if sources[ident].get('metadata', {}).get('availability') == 'closed':
+                raise ValueError('目标职位已结束，请重新选择目标')
+        receipt = state['reply']
+        path = root / receipt['file']
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != receipt['sha256']:
+            raise ValueError('用户目标回答记录已变化')
+        return state
     first, second = state.get('stage1'), state.get('stage2')
     if not first or not second or second.get('stage1_hash') != fingerprint(first):
         raise ValueError('尚未完成两阶段确认')
@@ -86,6 +105,48 @@ def execution_ready(root):
         reply = Path(root) / item['file']
         if not reply.is_file() or hashlib.sha256(reply.read_bytes()).hexdigest() != item['sha256']:
             raise ValueError('对话确认记录已变化，请核对用户原始回答')
+    return state
+
+
+def record_target(root, values, response):
+    """One user decision joins direction, JD source and selected/delegated job."""
+    root = Path(root)
+    reply = Path(response).read_text(encoding='utf-8').strip()
+    if not reply or not isinstance(values, dict): raise ValueError('需要实际目标选择与回答')
+    source = values.get('jd_source')
+    choice = values.get('target_choice')
+    if source not in {'provided', 'auto', 'none'} or choice not in {'unclear', 'specified'}:
+        raise ValueError('请在同一次目标选择中记录方向与 JD 来源')
+    sources = {s['id']: s for s in read_json(root / 'sources.json')['sources']}
+    ids = values.get('selected_jd_ids', [])
+    if not isinstance(ids, list) or any(not isinstance(i, str) for i in ids) or len(set(ids)) != len(ids):
+        raise ValueError('目标 JD 引用无效')
+    expected_kind = 'jd' if source == 'provided' else 'jd_sample'
+    if any(i not in sources or sources[i]['kind'] != expected_kind for i in ids):
+        raise ValueError('目标 JD 与来源不一致')
+    target = str(values.get('target', '')).strip()
+    if source == 'none':
+        if ids: raise ValueError('通用诊断不选择 JD')
+    elif not ids or not target:
+        raise ValueError('先取得真实 JD 并明确分析对象；委托选岗无需再次询问用户')
+    if choice == 'specified' and not target: raise ValueError('请记录用户指定目标')
+    delegated = values.get('delegated', False)
+    if not isinstance(delegated, bool): raise ValueError('delegated 必须为布尔值')
+    if any(sources[i].get('metadata', {}).get('availability') == 'closed' for i in ids):
+        raise ValueError('不能选择已结束职位')
+    goal = {'target_choice': choice, 'target': target, 'jd_source': source,
+            'selected_jd_ids': ids, 'delegated': delegated,
+            'route': {'provided':'01', 'auto':'02', 'none':'03'}[source]}
+    relative = 'confirmation-replies/target.txt'
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(reply, encoding='utf-8')
+    resume = next(s for s in sources.values() if s['kind'] == 'resume')
+    state = {'kind': 'single_target', 'target_decision': goal, 'target_hash': fingerprint(goal),
+             'resume_sha256': resume['sha256'], 'source_hashes': {i:sources[i]['sha256'] for i in ids},
+             'outputs': dict(DEFAULT_OUTPUTS),
+             'reply': {'channel':'codex', 'file':relative, 'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}}
+    write_json(root / 'confirmation.json', state)
     return state
 
 
@@ -158,9 +219,14 @@ def main():
     p.add_argument('--prefill'); p.add_argument('--open', action='store_true'); p.add_argument('--ready', action='store_true')
     p.add_argument('--record', help='已确认选项的 JSON 文件')
     p.add_argument('--response', help='用户在 Codex 中的实际回答文本文件')
+    p.add_argument('--target-record', help='合并后的求职目标 JSON 文件；完整任务的唯一决策')
     a = p.parse_args()
     try:
-        if a.ready: result = execution_ready(a.run_dir)
+        if a.target_record:
+            if not a.response or a.stage or a.open or a.record or a.ready:
+                raise ValueError('单目标记录只需 target-record 与 response')
+            result = record_target(a.run_dir, read_json(a.target_record), a.response)
+        elif a.ready: result = execution_ready(a.run_dir)
         else:
             if not a.stage or not a.prefill: raise ValueError('需要 stage 与 prefill')
             if a.record:

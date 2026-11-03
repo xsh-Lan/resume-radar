@@ -19,3 +19,8 @@ workflow.init 接收文字版 PDF，pdf_source 提取原始字符和页面坐标
 ## 0.15 连续对话
 
 Codex 持有需求确认、岗位选择、方案确认和追问，用户回答直接推进任务。confirm.py --record 根据实际回答和选项记录确认与回答哈希；--ready 校验需求、来源、方案及回答完整性。旧网页输入仅作兼容，分析完成后一次打开原件对照报告。
+
+
+## 0.16 单目标决策
+
+record_target保存唯一target_decision；execution_ready校验来源与实际回答，outputs由程序固定，网页读取outputs展示优化全文。旧stage1/stage2仅作兼容。完整任务以guided-workflow.md为准，默认不追问事实。产品决策依据rule/smallest-intervention与rule/no-redundant-entry：同一目标一次决定，已答内容复用，不再逐个确认派生设置。

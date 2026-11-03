@@ -9,7 +9,7 @@ const evidence = new Map(DATA.evidence.map(x => [x.id,x]));
 const reviews = [...DATA.reviews].sort((a,b) => Math.min(...a.unit_ids.map(id=>units.get(id).start))-Math.min(...b.unit_ids.map(id=>units.get(id).start)));
 const reviewMap = new Map(reviews.map(x => [x.id,x]));
 const numbers = new Map(reviews.map((x,i)=>[x.id,i+1]));
-const plan=DATA.confirmation?.stage2;
+const plan=DATA.confirmation?.outputs||DATA.confirmation?.stage2;
 const titles = {optimized:'优化后的简历',overview:'整体判断',modules:'模块诊断',reviews:'逐句审阅',questions:'待补充事项',requirements:'岗位要求对照',library:'经历示例库'};
 let currentView='overview', activeReview='', filter='all', zoom=1, activeCase=null, caseTab='work';
 let libraryQuery='', libraryRole='', libraryPage=0, toastTimer;

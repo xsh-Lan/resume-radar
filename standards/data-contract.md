@@ -103,6 +103,6 @@ run.example_library_scope 为 product_management 或 other。非产品经理目�
 
 原六文件的校验规则保持不变。旧文本运行目录仍可导出兼容 HTML。新 PDF 工作台的视觉和页面对应规则见 DESIGN.md，旧报告视觉约定不限制新工作台。
 
-## 0.14 求职工作流
+## 0.16 单目标工作流
 
-新完整运行使用 --guided，run.workflow_version=0.15（兼容旧 0.14）。confirmation.json 保存 Stage 1 需求及 Stage 2 方案，两阶段在 Codex 对话中根据用户实际回答记录，confirmation-replies 保存回答副本与哈希。旧网页确认记录兼容，不重复询问已答内容。目标岗位 target_choice=unclear/specified，第一项不明确；需求路由与 JD 来源独立。route 01/02/03 对应 mode jd/direction/general。general 不要求招聘 requirements，不强制联网，禁止伪造岗位匹配判断。需求、简历或已选 JD 变化导致方案失效；交付校验检查确认状态。optimized_resume=false 时 final_text 为空，true 时需有完整忠实优化文字；sentence_review=false 时按经历合并审阅。
+新完整运行使用--guided，workflow_version=0.16。confirmation.json的kind=single_target，target_decision记录一次合并的方向、JD来源、实际目标与委托状态，保存简历/JD哈希及用户回答副本。outputs固定为全文、逐句审阅、优化全文和不追问事实，不作为用户决策。目标或来源变化需更新同一目标记录；不再存在独立方案确认。route01/02/03对应mode jd/direction/general，通用诊断不伪造招聘要求。旧0.14/0.15两阶段运行继续兼容；新版不创建stage1/stage2。
