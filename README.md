@@ -1,6 +1,6 @@
 # 简历雷达
 
-当前版本：**0.16.1**。从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。在 Codex 对话中一次确定方向、JD来源与目标岗位，由 Codex 直接执行，在本机网页中将 PDF 原件与诊断、改写及固定经历案例对照。支持多职业分析；随包案例覆盖产品经理细分岗位。
+当前版本：**0.16.2**。从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。在 Codex 对话中一次确定方向、JD来源与目标岗位，由 Codex 直接执行，在本机网页中将 PDF 原件与诊断、改写及固定经历案例对照。支持多职业分析；随包案例覆盖产品经理细分岗位。
 
 ## 安装与使用
 
@@ -21,7 +21,7 @@ python scripts/workflow.py init --resume <原件.pdf> --run-dir <新运行目录
 python scripts/example_library.py --query <具体职责词>
 python scripts/workflow.py validate --run-dir <运行目录>
 python scripts/render_report.py <运行目录> --output-dir <运行目录>/report --open
-python scripts/package_skill.py --output <发布目录>/resume-radar-0.16.1.zip
+python scripts/package_skill.py --output <发布目录>/resume-radar-0.16.2.zip
 ```
 
 初始化只保存原件、提取来源和空分析文件，不自动完成分析。完整任务只需一次合并目标选择，具体步骤见 skills/resume-radar/references/guided-workflow.md。Codex 依照数据契约实际完成判断、改写和复核，再渲染报告。PDF 对照操作见 skills/resume-radar/references/workbench.md。

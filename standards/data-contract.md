@@ -106,3 +106,8 @@ run.example_library_scope 为 product_management 或 other。非产品经理目�
 ## 0.16 单目标工作流
 
 新完整运行使用--guided，workflow_version=0.16。confirmation.json的kind=single_target，target_decision记录一次合并的方向、JD来源、实际目标与委托状态，保存简历/JD哈希及用户回答副本。outputs固定为全文、逐句审阅、优化全文和不追问事实，不作为用户决策。目标或来源变化需更新同一目标记录；不再存在独立方案确认。route01/02/03对应mode jd/direction/general，通用诊断不伪造招聘要求。旧0.14/0.15两阶段运行继续兼容；新版不创建stage1/stage2。
+
+
+## 0.16.2 版式符号展示
+
+source_semantics只识别整段为已知项目符号的单元，不删原文、不改变ID、偏移或哈希。底层完整覆盖仍保留全部单元；presentation_reviews过滤纯符号审阅，并移除混合审阅中的独立符号位置，前台重新按实际内容编号。validation.presentation分别记录layout_units、content_units与review_items。

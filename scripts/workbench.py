@@ -8,6 +8,7 @@ from pathlib import Path
 from workflow import read_json, validate_run
 from pdf_source import read_pdf, locate_units
 from example_library import library
+from source_semantics import presentation_reviews
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,6 +42,7 @@ def render_workbench(run_dir, output_dir, pdf_path=None, open_browser=False):
     locations = locate_units(document, resume['units'])
     run = read_json(root / 'run.json')
     reviews = read_json(root / 'sentence_review.json')
+    visible_reviews, layout_ids = presentation_reviews(resume, reviews)
     references = library()
     links_file = root / 'example_links.json'
     links = read_json(links_file) if links_file.exists() else []
@@ -61,7 +63,8 @@ def render_workbench(run_dir, output_dir, pdf_path=None, open_browser=False):
     original_copy = out / 'original.pdf'
     if pdf != original_copy: shutil.copyfile(pdf, original_copy)
     data = {'run': run, 'resume': resume, 'sources': sources,
-            'reviews': reviews, 'diagnoses': read_json(root / 'diagnosis.json'),
+            'reviews': visible_reviews, 'layoutUnitIds': layout_ids,
+            'diagnoses': read_json(root / 'diagnosis.json'),
             'requirements': read_json(root / 'requirements.json'),
             'evidence': read_json(root / 'evidence.json'), 'pages': document['pages'],
             'locations': locations, 'links': links, 'libraryApplicable': applicable,
@@ -78,6 +81,8 @@ def render_workbench(run_dir, output_dir, pdf_path=None, open_browser=False):
     matched = sum(x['status'] == 'matched' for x in locations.values())
     validation['pdf_mapping'] = {'matched': matched, 'total': len(locations),
         'unresolved': [uid for uid, loc in locations.items() if loc['status'] != 'matched']}
+    validation['presentation'] = {'layout_units': len(layout_ids),
+        'content_units': len(resume['units']) - len(layout_ids), 'review_items': len(visible_reviews)}
     (out / 'validation.json').write_text(json.dumps(validation, ensure_ascii=False, indent=2), encoding='utf-8')
     if open_browser: webbrowser.open(target.as_uri())
     return {'html': str(target), 'validation': validation, 'library_cases': references['count']}

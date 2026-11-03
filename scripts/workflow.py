@@ -10,6 +10,7 @@ import unicodedata
 from datetime import datetime
 from urllib.parse import urlsplit
 from pathlib import Path
+from source_semantics import is_layout_symbol
 
 DATA_FILES=('run.json','sources.json','requirements.json','evidence.json','diagnosis.json','sentence_review.json')
 SUPPORT={'direct','transferable','partial','unknown','missing','conflicting'}
@@ -71,6 +72,8 @@ def initialize(args):
     write_json(dest/'run.json',run); write_json(dest/'sources.json',{'sources':sources})
     for f in DATA_FILES[2:]: write_json(dest/f,[])
     return {'run_dir':str(dest),'mode':run['mode'],'resume_units':len(sources[0]['units']),
+            'content_units':sum(not is_layout_symbol(u['text']) for u in sources[0]['units']),
+            'layout_units':sum(is_layout_symbol(u['text']) for u in sources[0]['units']),
             'status':'draft','note':'Sources only; model analysis and review still required.'}
 
 def add_source(args):

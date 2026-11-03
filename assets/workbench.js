@@ -34,6 +34,7 @@ function showView(view){currentView=view;for(const b of $$('[data-view]')){if(b.
 function highlightReview(id,scroll=true){
  activeReview=id;
  for(const marker of $$('.pdf-marker')){marker.classList.toggle('selected',marker.dataset.review===id);marker.hidden=marker.dataset.keep==='true'&&!$('#show-kept').checked&&marker.dataset.review!==id;}
+ for(const frame of $$('.pdf-page'))layoutPagePins(frame);
  for(const card of $$('.review-card'))card.classList.toggle('selected',card.dataset.review===id);
  const markers=$$('.pdf-marker').filter(b=>b.dataset.review===id);
  if(scroll&&markers.length)markers[0].scrollIntoView({block:'center',inline:'nearest',behavior:'smooth'});
@@ -56,13 +57,50 @@ function renderPdf(){
    const marker=button('',()=>selectReview(review.id,true),'pdf-marker');marker.dataset.review=review.id;marker.dataset.keep=String(review.decision==='keep');marker.hidden=review.decision==='keep';
    marker.style.left=(x0*100)+'%';marker.style.top=(y0*100)+'%';marker.style.width=((x1-x0)*100)+'%';marker.style.height=((y1-y0)*100)+'%';
    marker.title='#'+numbers.get(review.id)+' '+(labels[review.decision]||review.decision)+'：'+shortTitle(review);
-   marker.setAttribute('aria-label',marker.title);if(index===0)marker.append(node('span','marker-number',numbers.get(review.id)));frame.append(marker);
+   marker.setAttribute('aria-label',marker.title);frame.append(marker);
   });}
+  frame.annotationItems=reviews.flatMap(review=>{const boxes=rectangles(review).filter(b=>b.page===page.number);return boxes.length?[{review,y:Math.min(...boxes.map(b=>b.rect[1]))}]:[];});
   frame.append(node('span','page-number',page.number+' / '+DATA.pages.length));host.append(frame);
  }
+ const observer=new ResizeObserver(entries=>{for(const entry of entries)layoutPagePins(entry.target);});
+ for(const frame of $$('.pdf-page'))observer.observe(frame);
  const mapped=DATA.resume.units.filter(u=>DATA.locations[u.id]?.status==='matched').length;
  $('#mapping-summary').textContent=mapped===DATA.resume.units.length?'原文位置已全部关联':(DATA.resume.units.length-mapped)+' 处原文位置待核对';
 }
+function layoutPagePins(frame){
+ const items=frame.annotationItems.filter(item=>item.review.decision!=='keep'||$('#show-kept').checked||item.review.id===activeReview).sort((a,b)=>a.y-b.y);
+ const height=frame.getBoundingClientRect().height;if(height<=0)return;
+ const signature=items.map(i=>i.review.id).join('|')+':'+Math.round(height);
+ if(frame.pinSignature===signature){for(const pin of frame.querySelectorAll('.pdf-pin'))pin.classList.toggle('selected',pin.reviewIds.includes(activeReview));return;}
+ frame.pinSignature=signature;
+ for(const pin of frame.querySelectorAll('.pdf-pin,.pin-options'))pin.remove();
+ const groups=items.map(item=>[item]);
+ const gap=22,capacity=Math.max(1,Math.floor((height-2)/gap));
+ // At small PDF sizes, combine the nearest anchors into an explicit choice menu.
+ while(groups.length>capacity){let closest=0,distance=Infinity;for(let i=0;i<groups.length-1;i++){const d=groups[i+1][0].y-groups[i].at(-1).y;if(d<distance){distance=d;closest=i;}}groups.splice(closest,2,[...groups[closest],...groups[closest+1]]);}
+ const maxTop=Math.max(0,height-20);
+ const tops=groups.map(group=>Math.max(0,Math.min(maxTop,group[0].y*height-2)));
+ for(let i=1;i<tops.length;i++)tops[i]=Math.max(tops[i],tops[i-1]+gap);
+ for(let i=tops.length-1;i>=0;i--)tops[i]=Math.min(tops[i],i===tops.length-1?maxTop:tops[i+1]-gap);
+ groups.forEach((group,index)=>{
+  const first=group[0].review,ids=group.map(item=>item.review.id);
+  const pin=button('',()=>group.length===1?selectReview(first.id,true):openPinChoices(frame,pin,group),'pdf-pin');
+  pin.reviewIds=ids;pin.dataset.review=first.id;pin.dataset.keep=String(group.every(item=>item.review.decision==='keep'));pin.style.top=tops[index]+'px';pin.classList.toggle('selected',ids.includes(activeReview));
+  const label='#'+numbers.get(first.id)+(group.length>1?' 附近'+group.length+'处建议，展开选择':' '+shortTitle(first));
+  pin.title=label;pin.setAttribute('aria-label',label);if(group.length>1){pin.setAttribute('aria-haspopup','true');pin.setAttribute('aria-expanded','false');}
+  pin.append(node('span','marker-number',numbers.get(first.id)+(group.length>1?'+':'')));frame.append(pin);
+ });
+}
+function closePinChoices(restore=false){for(const panel of $$('.pin-options')){const trigger=panel.pinTrigger;panel.remove();trigger?.setAttribute('aria-expanded','false');if(restore&&trigger?.isConnected)trigger.focus();}}
+function openPinChoices(frame,trigger,group){
+ const wasOpen=trigger.getAttribute('aria-expanded')==='true';closePinChoices();if(wasOpen)return;
+ const panel=node('div','pin-options');panel.setAttribute('role','group');panel.setAttribute('aria-label','选择附近的审阅位置');panel.pinTrigger=trigger;
+ panel.style.top=Math.max(0,Math.min(parseFloat(trigger.style.top),frame.clientHeight-150))+'px';
+ for(const item of group)panel.append(button('#'+numbers.get(item.review.id)+' '+shortTitle(item.review),()=>{closePinChoices(true);selectReview(item.review.id,true);}));
+ panel.append(button('关闭位置选择',()=>closePinChoices(true)));frame.append(panel);trigger.setAttribute('aria-expanded','true');panel.querySelector('button').focus();
+}
+document.addEventListener('pointerdown',event=>{if(!event.target.closest('.pdf-pin,.pin-options'))closePinChoices();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('.pin-options')){event.preventDefault();closePinChoices(true);}});
 function locateButton(review){
  const boxes=rectangles(review), allMatched=review.unit_ids.every(id=>DATA.locations[id]?.status==='matched');
  const b=button(boxes.length?'定位原文 · 第 '+[...new Set(boxes.map(b=>b.page))].join('、')+' 页':'原文位置待核对',()=>{if(!highlightReview(review.id))toast('这条原文未能可靠定位，请对照下方原文核查。');},'locate-button');
