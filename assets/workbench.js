@@ -10,9 +10,12 @@ const reviews = [...DATA.reviews].sort((a,b) => Math.min(...a.unit_ids.map(id=>u
 const reviewMap = new Map(reviews.map(x => [x.id,x]));
 const numbers = new Map(reviews.map((x,i)=>[x.id,i+1]));
 const plan=DATA.confirmation?.outputs||DATA.confirmation?.stage2;
-const titles = {optimized:'优化后的简历',overview:'整体判断',modules:'模块诊断',reviews:'逐句审阅',questions:'待补充事实',requirements:'岗位要求对照',library:'产品简历库'};
+const titles = {optimized:'优化后的简历',overview:'整体判断',modules:'模块诊断',reviews:'逐句审阅',questions:'待补充事实',requirements:'岗位要求对照',jobs:'岗位推荐',library:'产品简历库'};
 let currentView='overview', activeReview='', filter='all', zoom=1, activeCase=null, caseTab='work';
-let moduleFilter='*';
+let moduleFilter='*', selectedJob='', jobTier='all';
+const availableJobs=()=> (DATA.run.job_matches||[]).filter(m=>DATA.sources.some(s=>s.id===m.source_id&&s.metadata&&s.metadata.availability!=='closed'));
+const jobNumber=m=>String(availableJobs().findIndex(x=>x.source_id===m.source_id)+1).padStart(2,'0');
+const itemNumber=(prefix,index)=>prefix+String(index+1).padStart(2,'0')+' · ';
 const moduleOf=review=>units.get(review.unit_ids[0])?.section||'基本信息';
 const moduleNames=[...new Set(reviews.map(moduleOf))];
 const moduleReviews=()=>moduleFilter==='*'?reviews:reviews.filter(r=>moduleOf(r)===moduleFilter);
@@ -35,7 +38,8 @@ function shortTitle(review){const text=review.capability||review.reason||origina
 function addNotice(parent,text){paragraph(parent,text,'notice');}
 function sectionLabel(parent,title,description){const h=node('div','section-label');h.append(node('h3','',title));if(description)h.append(node('small','',description));parent.append(h);}
 function renderModuleNav(){
- const host=$('#module-nav');host.hidden=!['modules','reviews'].includes(currentView);host.replaceChildren();if(host.hidden)return;
+ const host=$('#module-nav');host.hidden=!['modules','reviews','jobs'].includes(currentView);host.replaceChildren();if(host.hidden)return;
+ if(currentView==='jobs'){host.setAttribute('aria-label','按推荐难度筛选');for(const [value,label] of [['all','全部'],['priority','优先尝试'],['stretch','需要补强'],['verify','先核实条件']]){const count=availableJobs().filter(m=>value==='all'||m.tier===value).length;const b=button(label+' '+count,()=>{jobTier=value;renderModuleNav();renderContent();$('#analysis-content').scrollTop=0;});b.setAttribute('aria-pressed',String(jobTier===value));host.append(b);}return;}host.setAttribute('aria-label','选择简历模块');
  for(const [value,label] of [['*','全部'],...moduleNames.map(name=>[name,name])]){
   const b=button(label,()=>{moduleFilter=value;for(const item of host.querySelectorAll('button'))item.setAttribute('aria-pressed',String(item.dataset.module===value));renderContent();$('#analysis-content').scrollTop=0;const first=moduleReviews()[0];if(value!=='*'&&first)highlightReview(first.id,true);});
   b.dataset.module=value;b.setAttribute('aria-pressed',String(value===moduleFilter));host.append(b);
@@ -158,9 +162,10 @@ function renderOverview(parent){
  const overview=DATA.run.report_overview||{};
  paragraph(parent,overview.headline||'本次简历判断','lead');
  const block=node('div','summary-block');paragraph(block,overview.introduction||DATA.run.summary);parent.append(block);
- for(const item of overview.assessment||[]){const row=node('div','assessment-row');const name=node('strong','',item.dimension);name.append(node('span','status-tag',labels[item.status]||item.status));row.append(name);paragraph(row,item.judgment);parent.append(row);}
+ for(const [index,item] of (overview.assessment||[]).entries()){const row=node('div','assessment-row');const name=node('strong','',itemNumber('A',index)+item.dimension);name.append(node('span','status-tag',labels[item.status]||item.status));row.append(name);paragraph(row,item.judgment);parent.append(row);}
  if(overview.fit_scope)paragraph(parent,overview.fit_scope,'source-basis');
  if(overview.eligibility)paragraph(parent,overview.eligibility,'source-basis');
+ if(DATA.run.target&&DATA.run.mode!=='general')renderJobMatches(parent,true);
  sectionLabel(parent,'优先处理',DATA.diagnoses.length+' 项诊断');
  const priority=overview.priorities?.length?overview.priorities:DATA.diagnoses.filter(d=>d.priority==='high').slice(0,3).map(d=>({title:d.does_not_demonstrate,text:d.next_action,diagnosis_ids:[d.id]}));
  if(!priority.length)paragraph(parent,'没有标为高优先级的问题。可进入逐句审阅查看所有处理项。');
@@ -173,20 +178,46 @@ function renderOverview(parent){
 function renderModules(parent){
  const groups=new Map(),shownDiagnoses=new Set();for(const r of moduleReviews()){const section=moduleOf(r);if(!groups.has(section))groups.set(section,[]);groups.get(section).push(r);}
  for(const [section,items] of groups){const group=node('section','module-group');group.append(node('h3','',section+' · '+items.filter(r=>r.decision!=='keep').length+' 处建议'));
-  for(const id of new Set(items.flatMap(r=>r.diagnosis_ids))){if(shownDiagnoses.has(id))continue;shownDiagnoses.add(id);const d=diagnoses.get(id);if(!d)continue;const block=node('section','requirement-card');block.append(node('h3','',d.title||d.does_not_demonstrate));paragraph(block,d.demonstrates);paragraph(block,d.impact);paragraph(block,d.next_action);const related=items.filter(r=>r.diagnosis_ids.includes(id));for(const r of related)block.append(button('对照原文 #'+numbers.get(r.id),()=>selectReview(r.id),'locate-button'));group.append(block);}
+  for(const id of new Set(items.flatMap(r=>r.diagnosis_ids))){if(shownDiagnoses.has(id))continue;shownDiagnoses.add(id);const d=diagnoses.get(id);if(!d)continue;const block=node('section','requirement-card');block.append(node('h3','',itemNumber('D',DATA.diagnoses.indexOf(d))+(d.title||d.does_not_demonstrate)));paragraph(block,d.demonstrates);paragraph(block,d.impact);paragraph(block,d.next_action);const related=items.filter(r=>r.diagnosis_ids.includes(id));for(const r of related)block.append(button('对照原文 #'+numbers.get(r.id),()=>selectReview(r.id),'locate-button'));group.append(block);}
   if(!items.some(r=>r.diagnosis_ids.length))paragraph(group,'本模块没有单独的结构或证据诊断；文字调整见逐句审阅。'); group.append(button('查看本模块逐句审阅',()=>{moduleFilter=section;showView('reviews');}));parent.append(group);}
 }
+function questionItems(){
+ const items=[],seen=new Set();
+ function add(title,text,related){if(!text||seen.has(text))return;seen.add(text);items.push({title,text,related});}
+ for(const r of reviews)if(r.question||r.decision==='needs_input')add(shortTitle(r),r.question||r.reason,[r]);
+ for(const d of DATA.diagnoses)if(d.gap_type==='evidence_missing'||d.question)add(d.title||d.does_not_demonstrate,d.question||d.next_action,reviews.filter(r=>r.diagnosis_ids.includes(d.id)));
+ for(const e of DATA.evidence)if(['unclear','conflicting'].includes(e.status))add('证据待核对',e.action+'：现有材料尚不足以确认，请补充责任范围、阶段或依据。',reviews.filter(r=>r.evidence_ids.includes(e.id)));
+ return items;
+}
 function renderQuestions(parent){
- const seen=new Set();let count=0;
- function item(title,text,related){if(!text||seen.has(text))return;seen.add(text);count++;const card=node('section','requirement-card');card.append(node('h3','',title));paragraph(card,text);for(const r of related)card.append(button('查看逐句项 #'+numbers.get(r.id),()=>selectReview(r.id)));parent.append(card);}
- for(const r of reviews)if(r.question||r.decision==='needs_input')item(shortTitle(r),r.question||r.reason,[r]);
- for(const d of DATA.diagnoses)if(d.gap_type==='evidence_missing'||d.question)item(d.title||d.does_not_demonstrate,d.question||d.next_action,reviews.filter(r=>r.diagnosis_ids.includes(d.id)));
- for(const e of DATA.evidence)if(['unclear','conflicting'].includes(e.status))item('证据待核对',e.action+'：现有材料尚不足以确认，请补充责任范围、阶段或依据。',reviews.filter(r=>r.evidence_ids.includes(e.id)));
- if(!count)paragraph(parent,'本次已检查逐句审阅、诊断中的事实缺项及不明确或冲突的证据，未记录需要额外补充的事实。这仅表示现有材料足以支持本次保守表述，不代表经历已获外部核实；如发现遗漏，可回到 Codex 补充并更新分析。','empty-state');
+ const items=questionItems();
+ for(const [index,item] of items.entries()){const card=node('section','requirement-card');card.append(node('h3','',itemNumber('F',index)+item.title));paragraph(card,item.text);for(const r of item.related)card.append(button('查看逐句项 #'+numbers.get(r.id),()=>selectReview(r.id)));parent.append(card);}
+ if(!items.length)paragraph(parent,'本次已检查逐句审阅、诊断中的事实缺项及不明确或冲突的证据，未记录需要额外补充的事实。这仅表示现有材料足以支持本次保守表述，不代表经历已获外部核实；如发现遗漏，可回到 Codex 补充并更新分析。','empty-state');
+}
+function jobLink(parent,source){
+ try{const url=new URL(source.metadata.url);if(!['http:','https:'].includes(url.protocol))return;const a=node('a','job-source primary-button','查看真实岗位 ↗');a.href=url.href;a.target='_blank';a.rel='noopener';parent.append(a);}catch{}
+}
+function showJobDetails(id){selectedJob=id;showView('requirements');}
+function renderJobMatches(parent,compact=false){
+ const rank={priority:0,stretch:1,verify:2};
+ const matches=compact?[...availableJobs()].sort((a,b)=>rank[a.tier]-rank[b.tier]).slice(0,3):(DATA.run.job_matches||[]);
+ if(compact)sectionLabel(parent,'真实岗位匹配','基于已读取的岗位与本份简历');
+ else paragraph(parent,'难度表示当前简历与岗位任务的差距，不是录用概率。岗位状态以记录读取时为准，投递前请复核。','highlight-intro');
+ const tiers=[['priority','优先尝试'],['stretch','需要补强'],['verify','先核实条件']];
+ let total=0;
+ for(const [tier,label] of tiers){const items=matches.filter(m=>m.tier===tier).filter(m=>DATA.sources.find(s=>s.id===m.source_id)?.metadata?.availability!=='closed');if(!items.length||(!compact&&jobTier!=='all'&&tier!==jobTier))continue;if(!compact)sectionLabel(parent,label+' · '+items.length+' 岗位');
+ for(const m of items){const source=DATA.sources.find(s=>s.id===m.source_id);if(!source?.metadata)continue;total++;const meta=source.metadata,card=node('section','job-match');card.append(node('h3','',itemNumber('J',Number(jobNumber(m))-1)+meta.company+' · '+meta.title));paragraph(card,label+' · '+meta.location+' · '+(meta.availability==='open'?'页面可投递，名额待复核':'状态或条件待核实'),'source-basis');paragraph(card,m.judgment);if(!compact){heading(card,'已有支持');paragraph(card,m.strengths);heading(card,'主要差距与准备');paragraph(card,m.gaps);paragraph(card,'读取日期：'+meta.retrieved_at,'source-basis');}card.append(button('查看岗位要求与匹配详情',()=>showJobDetails(m.source_id),'locate-button'));if(!compact)jobLink(card,source);parent.append(card);}}
+ if(!total)paragraph(parent,availableJobs().length?'当前筛选下没有岗位，可切换其他难度。':'尚无经过逐岗评估的可推荐岗位。已读取的岗位可在岗位要求中查看；不会仅凭职位名称自动分配难度。','empty-state');
+ const closed=matches.filter(m=>DATA.sources.find(s=>s.id===m.source_id)?.metadata?.availability==='closed');if(!compact&&closed.length)paragraph(parent,'已排除 '+closed.length+' 个下线岗位，不列入投递推荐。','source-basis');
+ if(compact)parent.append(button('查看全部 '+availableJobs().length+' 个推荐岗位',()=>showView('jobs')));
 }
 function renderRequirements(parent){
+ const choices=DATA.sources.filter(s=>['jd','jd_sample'].includes(s.kind));
+ if(choices.length){const select=node('select','job-select');select.setAttribute('aria-label','选择岗位要求');const all=node('option','','全部岗位要求');all.value='';select.append(all);for(const source of choices){const o=node('option','',(source.metadata?.company||'用户提供')+' · '+(source.metadata?.title||source.id));o.value=source.id;select.append(o);}select.value=selectedJob;select.addEventListener('change',()=>{selectedJob=select.value;renderContent();});parent.append(select);}
+ if(selectedJob){const source=choices.find(s=>s.id===selectedJob),match=(DATA.run.job_matches||[]).find(m=>m.source_id===selectedJob);if(source){heading(parent,source.metadata?.title||'岗位详情');if(match){paragraph(parent,match.judgment);heading(parent,'已有支持');paragraph(parent,match.strengths);heading(parent,'主要差距');paragraph(parent,match.gaps);}paragraph(parent,'来源摘录（仅保留与本次诊断相关的要求）','source-basis');paragraph(parent,source.text);if(source.metadata)jobLink(parent,source);}}
+
  paragraph(parent,'岗位要求以本次 JD 或已声明的方向依据为准；示例库不作为招聘门槛。','highlight-intro');
- for(const req of DATA.requirements){const card=node('section','requirement-card');const h=node('h3','',req.description);h.append(node('span','status-tag',labels[req.support]||req.support));card.append(h);paragraph(card,req.responsibility);paragraph(card,req.decision_depth);
+ for(const req of DATA.requirements){if(selectedJob){const match=(DATA.run.job_matches||[]).find(m=>m.source_id===selectedJob);const belongs=req.source_unit_ids?.some(id=>DATA.sources.find(s=>s.id===selectedJob)?.units.some(u=>u.id===id));if(!belongs&&!match?.requirement_ids?.includes(req.id))continue;}const card=node('section','requirement-card');const h=node('h3','',itemNumber('R',DATA.requirements.indexOf(req))+req.description);h.append(node('span','status-tag',labels[req.support]||req.support));card.append(h);paragraph(card,req.responsibility);paragraph(card,req.decision_depth);
  const linked=[...new Set((req.evidence_ids||[]).map(id=>evidence.get(id)?.unit_id).filter(Boolean))];
  for(const uid of linked){const review=reviews.find(r=>r.unit_ids.includes(uid));if(review)card.append(button('对照原文 #'+numbers.get(review.id),()=>selectReview(review.id),'locate-button'));}
  paragraph(card,req.basis_note||({jd:'依据：用户提供的 JD',sample_jd:'依据：已读取的招聘样本',role_standard:'依据：方向级参考标准',hypothesis:'依据：待确认的方向假设'}[req.basis]||''),'source-basis');parent.append(card);}
@@ -198,17 +229,17 @@ function renderLibrary(parent){
  const select=node('select');select.setAttribute('aria-label','筛选案例岗位');const all=node('option','','全部产品经理岗位');all.value='';select.append(all);for(const role of LIB.roles){const option=node('option','',role.name);option.value=role.id;select.append(option);}select.value=libraryRole;
  const results=node('div');let timer;input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{libraryQuery=input.value;libraryPage=0;drawResults();},120);});select.addEventListener('change',()=>{libraryRole=select.value;libraryPage=0;drawResults();});controls.append(input,select);parent.append(controls,results);
  function drawResults(){results.replaceChildren();const terms=libraryQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);const found=Object.values(LIB.cases).filter(c=>(!libraryRole||c.roleId===libraryRole)&&terms.every(t=>(c.roleName+' '+c.directionName+' '+c.dutyName+' '+c.project.title).toLowerCase().includes(t)));const size=12;libraryPage=Math.min(libraryPage,Math.max(0,Math.ceil(found.length/size)-1));results.append(node('div','library-count','找到 '+found.length+' 组 · 固定库共 '+DATA.libraryCount+' 组'));
- for(const c of found.slice(libraryPage*size,(libraryPage+1)*size)){const b=button('',()=>openCase(c.id),'library-result');b.append(node('strong','',c.dutyName),node('small','',c.roleName+' / '+c.directionName));results.append(b);}
+ for(const c of found.slice(libraryPage*size,(libraryPage+1)*size)){const b=button('',()=>openCase(c.id),'library-result');b.append(node('strong','',itemNumber('C',Object.values(LIB.cases).indexOf(c))+c.dutyName),node('small','',c.roleName+' / '+c.directionName));results.append(b);}
  if(!found.length)results.append(node('p','empty-state','没有匹配案例。试试更具体的职责词，或清除筛选。'));
  if(found.length>size){const pager=node('div','library-pagination');const prev=button('上一页',()=>{libraryPage--;drawResults();});prev.disabled=libraryPage===0;const next=button('下一页',()=>{libraryPage++;drawResults();});next.disabled=(libraryPage+1)*size>=found.length;pager.append(prev,node('span','',(libraryPage+1)+' / '+Math.ceil(found.length/size)),next);results.append(pager);}}
  drawResults();
 }
-function renderContent(){const parent=$('#analysis-content');parent.replaceChildren();if(currentView==='overview')renderOverview(parent);else if(currentView==='modules')renderModules(parent);else if(currentView==='reviews'){paragraph(parent,'编号与 PDF 原件标记一致。展开一项查看改写与编辑理由，原文在左侧高亮；模块层面的判断见模块诊断。','highlight-intro');reviewList(parent,moduleReviews());}else if(currentView==='questions'){const questions=reviews.filter(r=>r.question||r.decision==='needs_input');paragraph(parent,'补充事实后，回到 Codex 更新分析。未确认的内容不会写成既成成果。','highlight-intro');renderQuestions(parent);}else if(currentView==='requirements')renderRequirements(parent);else if(currentView==='optimized'){paragraph(parent,DATA.run.final_text);parent.append(button('复制完整简历',()=>copyText(DATA.run.final_text),'primary-button'));}else renderLibrary(parent);}
+function renderContent(){const parent=$('#analysis-content');parent.replaceChildren();if(currentView==='overview')renderOverview(parent);else if(currentView==='modules')renderModules(parent);else if(currentView==='reviews'){paragraph(parent,'编号与 PDF 原件标记一致。展开一项查看改写与编辑理由，原文在左侧高亮；模块层面的判断见模块诊断。','highlight-intro');reviewList(parent,moduleReviews());}else if(currentView==='questions'){const questions=reviews.filter(r=>r.question||r.decision==='needs_input');paragraph(parent,'补充事实后，回到 Codex 更新分析。未确认的内容不会写成既成成果。','highlight-intro');renderQuestions(parent);}else if(currentView==='jobs')renderJobMatches(parent);else if(currentView==='requirements')renderRequirements(parent);else if(currentView==='optimized'){paragraph(parent,DATA.run.final_text);parent.append(button('复制完整简历',()=>copyText(DATA.run.final_text),'primary-button'));}else renderLibrary(parent);}
 function openCase(id){activeCase=LIB.cases[id];if(!activeCase)return;caseTab='work';$('#case-title').textContent=activeCase.dutyName;$('#case-meta').textContent=activeCase.roleName+' / '+activeCase.directionName+' / '+activeCase.id;renderCase();$('#case-dialog').showModal();}
 function caseSections(){const c=activeCase,p=c.project;if(caseTab==='work')return [['工作经历',[c.workExperience.introduction,...c.workExperience.bullets]]];if(caseTab==='cstar')return [['项目名称',p.title],...Object.entries(p.cstar).map(([key,value])=>[({C:'C · 背景',S:'S · 情境',T:'T · 任务',A:'A · 行动',R:'R · 结果'})[key]||key,value])];return [['项目名称',p.title],...Object.entries(p.natural).map(([key,value])=>[({background:'项目背景',responsibilities:'本人职责',coreWork:'核心工作',results:'项目结果'})[key]||key,value])];}
 function renderCase(){for(const b of $$('[data-case-tab]')){b.classList.toggle('active',b.dataset.caseTab===caseTab);b.setAttribute('aria-pressed',String(b.dataset.caseTab===caseTab));}const host=$('#case-body');host.replaceChildren();addNotice(host,activeCase.notice||'固定教学示例，仅用于表达参考；其中事实、规模和结果不属于你的经历。');for(const [title,content]of caseSections()){host.append(node('h3','',title));if(Array.isArray(content)){const ul=node('ul');for(const text of content)ul.append(node('li','',text));host.append(ul);}else paragraph(host,content);}}
 if(plan?.sentence_review===false){const tab=$('[data-view=reviews]');tab.textContent='经历审阅';titles.reviews='经历审阅';}
-if(DATA.run.mode==='general')$('[data-view=requirements]').hidden=true;
+if(DATA.run.mode==='general'&&!DATA.sources.some(s=>['jd','jd_sample'].includes(s.kind)))$('[data-view=requirements]').hidden=true;
 if(DATA.run.final_text&&(!plan||plan.optimized_resume)){const tab=button('优化后的简历',()=>showView('optimized'));tab.dataset.view='optimized';$('.main-nav').append(tab);}
 for(const b of $$('[data-view]'))b.addEventListener('click',()=>showView(b.dataset.view));
 $('.brand').addEventListener('click',event=>{event.preventDefault();showView('overview');});
@@ -219,4 +250,8 @@ $('#close-case').addEventListener('click',()=>$('#case-dialog').close());$('#cas
 for(const b of $$('[data-case-tab]'))b.addEventListener('click',()=>{caseTab=b.dataset.caseTab;renderCase();});
 $('#copy-case').addEventListener('click',()=>copyText(caseSections().map(([title,value])=>title+'\n'+(Array.isArray(value)?value.join('\n'):value)).join('\n\n')));
 $('#target-name').textContent=DATA.run.target||(DATA.run.mode==='general'?'通用简历诊断':'按简历探索方向');$('#target-name').title=$('#target-name').textContent;$('#filename').textContent=DATA.filename;$('#filename').title=DATA.filename;$('#page-count').textContent=DATA.pages.length+' 页 · 原文件排版';if($('#review-count'))$('#review-count').textContent=reviews.length;
+const navCounts={overview:(DATA.run.report_overview?.priorities||[]).length,modules:DATA.diagnoses.filter(d=>reviews.some(r=>r.diagnosis_ids.includes(d.id))).length,reviews:reviews.length,questions:questionItems().length,requirements:DATA.requirements.length,jobs:availableJobs().length,library:DATA.libraryCount,optimized:DATA.run.final_text?1:0};
+const navLabels={requirements:'岗位要求',optimized:'优化全文'};
+for(const tab of $$('.main-nav [data-view]')){const view=tab.dataset.view;tab.replaceChildren(node('span','nav-label',navLabels[view]||titles[view]));if(view!=='library')tab.append(node('span','nav-count',navCounts[view]??0));tab.title=view==='library'?'产品简历库':({overview:'优先处理事项',modules:'诊断项',reviews:'逐句审阅项',questions:'待补充事实项',requirements:'已拆解要求',jobs:'可推荐岗位（不含下线）',optimized:'优化全文'}[view]||'内容')+'：'+(navCounts[view]??0);}
+
 renderPdf();showView('overview');

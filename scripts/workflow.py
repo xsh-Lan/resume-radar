@@ -287,6 +287,20 @@ def validate_run(directory):
             cids=refs(d.get('confirmation_evidence_ids',[]),evidence,ident+': confirmations')
             if d.get('confirmed_by_user') is not True or not cids or any(evidence[i].get('status')!='user_confirmed' for i in cids): fail('unconfirmed_gap',ident)
         if d.get('gap_type')=='hard_constraint' and (not rids or any(requirements[i].get('importance')!='hard' or requirements[i].get('basis') not in {'jd','sample_jd'} for i in rids)): fail('hard_constraint',ident)
+    matches=run.get('job_matches',[])
+    if not isinstance(matches,list): fail('job_matches','Expected a list'); matches=[]
+    seen_jobs=set()
+    for match in matches:
+        if not isinstance(match,dict): fail('job_matches','Expected an object'); continue
+        sid=match.get('source_id')
+        if sid not in sources or sources[sid].get('kind') not in {'jd','jd_sample'}: fail('job_matches','Real JD source required')
+        if sid in seen_jobs: fail('job_matches','Duplicate job assessment')
+        seen_jobs.add(sid)
+        if match.get('tier') not in {'priority','stretch','verify'}: fail('job_matches','Invalid difficulty')
+        fields(match,['judgment','strengths','gaps'],'job match')
+        refs(match.get('evidence_ids',[]),evidence,'job match evidence')
+        if not match.get('evidence_ids'): fail('job_matches','Candidate evidence required')
+        refs(match.get('requirement_ids',[]),requirements,'job match requirements')
     options=run.get('role_options',[])
     if not isinstance(options,list) or any(not isinstance(o,dict) for o in options): fail('roles','Expected role options list'); options=[]
     if mode=='explore' and not options: fail('roles','Supported role options required')

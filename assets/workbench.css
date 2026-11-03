@@ -27,3 +27,19 @@
 @media print{body{background:white}.app-shell{display:block;height:auto}.brand{color:#263447}.main-nav,.document-controls,.original-link,.document-footer,.pdf-pin,.pin-options,dialog,#toast{display:none!important}.workspace{display:block;height:auto;padding:0}.document-panel{display:none}.analysis-panel{overflow:visible;border-radius:0}.analysis-content{overflow:visible;padding:0}.analysis-heading{padding:15px 0}.review-card{break-inside:avoid}.review-body{display:block!important}}
 
 #zoom-in,#zoom-out{min-width:48px;width:auto}.review-card>summary:after{white-space:nowrap}
+
+#zoom-in,#zoom-out{min-width:30px;width:30px}.job-match{padding:16px 0;border-bottom:1px solid var(--line)}.job-match h3{font-size:14px}.job-match p{font-size:12px}.job-source{display:inline-block;margin:12px 0 0 12px;font-size:12px}.job-select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);margin-bottom:16px}
+
+.job-source{display:inline-flex;align-items:center;justify-content:center;padding:10px 15px;border:1px solid var(--teal);border-radius:7px;font-size:13px;font-weight:600;min-height:40px;text-decoration:none}.job-source:focus-visible{outline:3px solid var(--blue);outline-offset:3px}.main-nav .nav-count{display:inline-block;font-variant-numeric:tabular-nums;white-space:nowrap}.job-match h3,.requirement-card h3{scroll-margin-top:12px}
+
+.main-nav button{display:flex;align-items:center;justify-content:space-between;gap:5px}.main-nav .nav-count{flex-shrink:0;margin-left:auto}
+
+/* Navigation labels and counts share one baseline and never split into characters. */
+.app-shell{grid-template-columns:minmax(0,1fr) 156px}
+.main-nav{padding:20px 10px;gap:6px}
+.main-nav button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-height:48px;padding:12px 10px;line-height:1.5}
+.main-nav .nav-label{font-size:13px;font-weight:500;white-space:nowrap;opacity:1;margin:0;min-width:0}
+.main-nav .nav-count{font-size:11px;font-weight:500;line-height:20px;min-width:22px;text-align:center;margin:0;opacity:1;color:#8995aa;background:#ffffff08;border-radius:5px;font-variant-numeric:tabular-nums}
+.main-nav button[aria-current=page] .nav-count{color:#d9ebf8;background:#ffffff12}
+@media(max-width:1250px){.app-shell{grid-template-columns:minmax(0,1fr) 144px}.main-nav{padding:16px 8px}.main-nav button{padding:11px 8px;gap:6px}.main-nav .nav-label{font-size:12px}}
+@media(max-width:480px){.app-shell{grid-template-columns:minmax(0,1fr) 124px}.main-nav{padding:12px 5px}.main-nav button{padding:10px 6px;gap:4px}.main-nav .nav-label{font-size:11px}.main-nav .nav-count{font-size:10px;min-width:18px}}
