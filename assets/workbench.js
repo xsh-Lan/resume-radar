@@ -178,7 +178,8 @@ function renderOverview(parent){
 function renderModules(parent){
  const groups=new Map(),shownDiagnoses=new Set();for(const r of moduleReviews()){const section=moduleOf(r);if(!groups.has(section))groups.set(section,[]);groups.get(section).push(r);}
  for(const [section,items] of groups){const group=node('section','module-group');group.append(node('h3','',section+' · '+items.filter(r=>r.decision!=='keep').length+' 处建议'));
-  for(const id of new Set(items.flatMap(r=>r.diagnosis_ids))){if(shownDiagnoses.has(id))continue;shownDiagnoses.add(id);const d=diagnoses.get(id);if(!d)continue;const block=node('section','requirement-card');block.append(node('h3','',itemNumber('D',DATA.diagnoses.indexOf(d))+(d.title||d.does_not_demonstrate)));paragraph(block,d.demonstrates);paragraph(block,d.impact);paragraph(block,d.next_action);const related=items.filter(r=>r.diagnosis_ids.includes(id));for(const r of related)block.append(button('对照原文 #'+numbers.get(r.id),()=>selectReview(r.id),'locate-button'));group.append(block);}
+  const diagnosisIds=[...new Set(items.flatMap(r=>r.diagnosis_ids))].sort((a,b)=>DATA.diagnoses.findIndex(d=>d.id===a)-DATA.diagnoses.findIndex(d=>d.id===b));
+  for(const id of diagnosisIds){if(shownDiagnoses.has(id))continue;shownDiagnoses.add(id);const d=diagnoses.get(id);if(!d)continue;const block=node('section','requirement-card');block.append(node('h3','',String(DATA.diagnoses.indexOf(d)+1)+' · '+(d.title||d.does_not_demonstrate)));paragraph(block,d.demonstrates);paragraph(block,d.impact);paragraph(block,d.next_action);const related=items.filter(r=>r.diagnosis_ids.includes(id));for(const r of related)block.append(button('对照原文 #'+numbers.get(r.id),()=>selectReview(r.id),'locate-button'));group.append(block);}
   if(!items.some(r=>r.diagnosis_ids.length))paragraph(group,'本模块没有单独的结构或证据诊断；文字调整见逐句审阅。'); group.append(button('查看本模块逐句审阅',()=>{moduleFilter=section;showView('reviews');}));parent.append(group);}
 }
 function questionItems(){
