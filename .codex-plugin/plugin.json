@@ -1,6 +1,6 @@
 {
   "name": "resume-radar",
-  "version": "0.14.1",
+  "version": "0.15",
   "description": "从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。",
   "author": {
     "name": "xsh-Lan"
@@ -18,7 +18,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "简历雷达（resume radar）",
-    "shortDescription": "三路由求职工作流与两阶段方案确认",
+    "shortDescription": "Codex 对话连续执行，网页查看原件对照报告",
     "longDescription": "由 Codex 分析后打开本机网页，将完整 PDF 原件与诊断、改写和固定经历案例双向定位。保留多职业分析、方向推荐、岗位分析和面试训练。",
     "developerName": "xsh-Lan",
     "category": "Productivity",

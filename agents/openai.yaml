@@ -1,4 +1,4 @@
 interface:
   display_name: "简历雷达"
-  short_description: "求职工作流 Agent：三路由、两阶段确认与 PDF 原件对照"
-  default_prompt: "使用 $resume-radar，根据我的简历预填求职需求，打开两阶段确认网页，按确认后的路由完成岗位发现、诊断和优化。"
+  short_description: "求职工作流 Agent：对话内确认与执行，完成后打开 PDF 原件对照"
+  default_prompt: "使用 $resume-radar，在当前对话确认求职需求与分析方案，收到回答后继续岗位发现、诊断和优化，完成后打开原件对照报告。"

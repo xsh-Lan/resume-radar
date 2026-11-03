@@ -61,7 +61,7 @@ def initialize(args):
          'summary':'','actions':[],'final_text':'','display_mode':'focused',
          'market_search':{'status':'not_needed' if args.jd else 'pending','limitations':'','attempts':[]},
          'review':{'status':'pending','findings':[]}}
-    if getattr(args, 'guided', False): run['workflow_version'] = '0.14'
+    if getattr(args, 'guided', False): run['workflow_version'] = '0.15'
     if run['mode'] == 'general':
         run['market_search'] = {'status':'not_needed','limitations':'用户选择通用简历诊断，不作目标岗位匹配或市场检索。','attempts':[]}
     dest.mkdir(parents=True)
@@ -156,7 +156,7 @@ def validate_run(directory):
             units[u['id']]=u
             if s.get('kind')=='resume': resume_units[u['id']]=u
     if not resume_units: fail('source','No resume units')
-    if run.get('workflow_version') == '0.14':
+    if run.get('workflow_version') in {'0.14', '0.15'}:
         try:
             from confirm import execution_ready
             confirmed = execution_ready(root)

@@ -14,3 +14,8 @@ workflow.py 不执行模型推断或网页抓取；它维护来源、覆盖、�
 ## 0.13 原件对照
 
 workflow.init 接收文字版 PDF，pdf_source 提取原始字符和页面坐标；六文件仍由 Codex 分析。render_report 检测 PDF 来源后交给 workbench，生成本地图片、标记与诊断数据。库资源按 release 哈希核验后由 example_library 查询，案例关联独立于候选人证据。浏览器只做展示和本机状态记录，不执行 AI 分析。独立包由 package_skill 白名单生成。
+
+
+## 0.15 连续对话
+
+Codex 持有需求确认、岗位选择、方案确认和追问，用户回答直接推进任务。confirm.py --record 根据实际回答和选项记录确认与回答哈希；--ready 校验需求、来源、方案及回答完整性。旧网页输入仅作兼容，分析完成后一次打开原件对照报告。

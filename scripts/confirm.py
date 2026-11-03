@@ -1,4 +1,4 @@
-"""Local two-stage workflow confirmation; analysis stays in Codex."""
+"""Record confirmations from Codex replies; legacy web input is optional."""
 import argparse
 import hashlib
 import json
@@ -82,6 +82,26 @@ def execution_ready(root):
     for ident, sha in second['source_hashes'].items():
         if ident not in sources or sources[ident]['sha256'] != sha:
             raise ValueError('选定 JD 已变化，请重新确认方案')
+    for item in state.get('conversation_receipts', {}).values():
+        reply = Path(root) / item['file']
+        if not reply.is_file() or hashlib.sha256(reply.read_bytes()).hexdigest() != item['sha256']:
+            raise ValueError('对话确认记录已变化，请核对用户原始回答')
+    return state
+
+
+def record_reply(root, stage, values, prefill, response):
+    """The host supplies the actual reply only after the user answers in Codex."""
+    reply = Path(response).read_text(encoding='utf-8').strip()
+    if not reply: raise ValueError('需要用户实际回答，不能将预填内容视为确认')
+    state = confirm(root, stage, values, prefill)
+    relative = f'confirmation-replies/stage{stage}.txt'
+    target = Path(root) / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(reply, encoding='utf-8')
+    state.setdefault('conversation_receipts', {})[str(stage)] = {
+        'channel': 'codex', 'file': relative,
+        'sha256': hashlib.sha256(target.read_bytes()).hexdigest()}
+    write_json(Path(root) / 'confirmation.json', state)
     return state
 
 
@@ -136,12 +156,19 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--run-dir', required=True); p.add_argument('--stage', type=int, choices=(1, 2))
     p.add_argument('--prefill'); p.add_argument('--open', action='store_true'); p.add_argument('--ready', action='store_true')
+    p.add_argument('--record', help='已确认选项的 JSON 文件')
+    p.add_argument('--response', help='用户在 Codex 中的实际回答文本文件')
     a = p.parse_args()
     try:
         if a.ready: result = execution_ready(a.run_dir)
         else:
             if not a.stage or not a.prefill: raise ValueError('需要 stage 与 prefill')
-            result = serve(a.run_dir, a.stage, read_json(a.prefill), a.open)
+            if a.record:
+                if not a.response or a.open: raise ValueError('对话确认需要 response，且不能同时打开网页')
+                result = record_reply(a.run_dir, a.stage, read_json(a.record), read_json(a.prefill), a.response)
+            else:
+                if not a.open: raise ValueError('请使用 record 保存对话确认；旧网页模式需要显式 open')
+                result = serve(a.run_dir, a.stage, read_json(a.prefill), True)
         print(json.dumps(result, ensure_ascii=False)); return 0
     except (OSError, ValueError, KeyError) as exc:
         print(json.dumps({'ok': False, 'error': str(exc)}, ensure_ascii=False)); return 1

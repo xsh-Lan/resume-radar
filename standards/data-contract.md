@@ -105,4 +105,4 @@ run.example_library_scope 为 product_management 或 other。非产品经理目�
 
 ## 0.14 求职工作流
 
-新完整运行使用 --guided，run.workflow_version=0.14。confirmation.json 保存 Stage 1 需求及 Stage 2 方案，两阶段由本机网页真实提交。目标岗位 target_choice=unclear/specified，第一项不明确；需求路由与 JD 来源独立。route 01/02/03 对应 mode jd/direction/general。general 不要求招聘 requirements，不强制联网，禁止伪造岗位匹配判断。需求、简历或已选 JD 变化导致方案失效；交付校验检查确认状态。optimized_resume=false 时 final_text 为空，true 时需有完整忠实优化文字；sentence_review=false 时按经历合并审阅。
+新完整运行使用 --guided，run.workflow_version=0.15（兼容旧 0.14）。confirmation.json 保存 Stage 1 需求及 Stage 2 方案，两阶段在 Codex 对话中根据用户实际回答记录，confirmation-replies 保存回答副本与哈希。旧网页确认记录兼容，不重复询问已答内容。目标岗位 target_choice=unclear/specified，第一项不明确；需求路由与 JD 来源独立。route 01/02/03 对应 mode jd/direction/general。general 不要求招聘 requirements，不强制联网，禁止伪造岗位匹配判断。需求、简历或已选 JD 变化导致方案失效；交付校验检查确认状态。optimized_resume=false 时 final_text 为空，true 时需有完整忠实优化文字；sentence_review=false 时按经历合并审阅。

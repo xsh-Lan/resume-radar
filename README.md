@@ -1,6 +1,6 @@
 # 简历雷达
 
-当前版本：**0.14.1**。从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。通过需求确认、分析方案确认两个本机网页步骤，由 Codex 执行，在本机网页中将 PDF 原件与诊断、改写及固定经历案例对照。支持多职业分析；随包案例覆盖产品经理细分岗位。
+当前版本：**0.15**。从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。在 Codex 对话中完成需求确认、岗位选择和分析方案确认，由 Codex 执行，在本机网页中将 PDF 原件与诊断、改写及固定经历案例对照。支持多职业分析；随包案例覆盖产品经理细分岗位。
 
 ## 安装与使用
 
@@ -8,7 +8,7 @@
 
 需要 Python 3.10+ 和 PyMuPDF。Codex 根据 skill 说明检查依赖，缺少时运行 `python -m pip install -r <安装目录>/requirements.txt`。浏览器展示不需要 Chrome 扩展、模型 Key 或网页后台。首版不处理 Word 自动转换和扫描件。
 
-先在需求确认页选择目标岗位，第一项为“不明确，先帮我探索方向”，也可填写已有意向岗位。随后确认分析方案，再按选定路由执行。保留四个核心 skill 的方法与内容。完整评估通过校验后打开本机报告：中间展示原始 PDF 各页，右侧给出对应诊断和案例，支持点击编号双向定位、缩放、筛选、复制及本机处理标记。修改建议不改写 PDF。
+先在 Codex 对话中选择目标岗位，第一项为“不明确，先帮我探索方向”，也可填写已有意向岗位。随后在同一对话确认分析方案，收到回答后继续执行，最后打开原件对照报告。保留四个核心 skill 的方法与内容。完整评估通过校验后打开本机报告：中间展示原始 PDF 各页，右侧给出对应诊断和案例，支持点击编号双向定位、缩放、筛选、复制及本机处理标记。修改建议不改写 PDF。
 
 六个入口为整体判断、模块诊断、逐句审阅、待补充事项、岗位要求及经历示例库。Hired 固定库含 41 类产品经理岗位、351 个细分方向、2,125 组案例，保留原文与教学说明；不声称案例是真实已核验履历，不用案例替代候选人事实。非产品经理目标不强配案例。不使用 AI 生成新案例补库。
 
@@ -21,7 +21,7 @@ python scripts/workflow.py init --resume <原件.pdf> --run-dir <新运行目录
 python scripts/example_library.py --query <具体职责词>
 python scripts/workflow.py validate --run-dir <运行目录>
 python scripts/render_report.py <运行目录> --output-dir <运行目录>/report --open
-python scripts/package_skill.py --output <发布目录>/resume-radar-0.14.1.zip
+python scripts/package_skill.py --output <发布目录>/resume-radar-0.15.zip
 ```
 
 初始化只保存原件、提取来源和空分析文件，不自动完成分析。完整任务须先完成两阶段确认，具体步骤见 skills/resume-radar/references/guided-workflow.md。Codex 依照数据契约实际完成判断、改写和复核，再渲染报告。PDF 对照操作见 skills/resume-radar/references/workbench.md。
