@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DIRECTORIES = ('scripts', 'assets', 'skills', 'standards', 'third-party-licenses')
 FILES = ('requirements.txt', 'README.md', 'THIRD_PARTY_NOTICES.md', 'DESIGN.md')
+PROMOTED_ENTRIES = {'skills/resume-radar/SKILL.md', 'skills/resume-radar/agents/openai.yaml'}
 
 
 def package(output):
@@ -20,6 +21,7 @@ def package(output):
         for directory in DIRECTORIES:
             for path in sorted((ROOT / directory).rglob('*')):
                 if not path.is_file() or '__pycache__' in path.parts or path.suffix == '.pyc': continue
+                if path.relative_to(ROOT).as_posix() in PROMOTED_ENTRIES: continue
                 archive.write(path, 'resume-radar/' + path.relative_to(ROOT).as_posix())
     return {'package': str(output), 'bytes': output.stat().st_size}
 

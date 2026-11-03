@@ -114,6 +114,9 @@ class PdfWorkbenchTests(unittest.TestCase):
         with zipfile.ZipFile(target) as archive:
             names = archive.namelist()
             self.assertIn('resume-radar/SKILL.md', names)
+            self.assertNotIn('resume-radar/skills/resume-radar/SKILL.md', names)
+            self.assertNotIn('resume-radar/skills/resume-radar/agents/openai.yaml', names)
+            self.assertEqual(sum(name.endswith('/SKILL.md') for name in names), 4)
             self.assertIn('resume-radar/assets/hired-library/release.json', names)
             self.assertFalse(any('.eval-tmp' in name or '/profile/' in name or 'original.pdf' in name or 'excellent-resume-patterns' in name for name in names))
 
