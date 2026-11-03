@@ -89,7 +89,8 @@ class ConfirmationTests(unittest.TestCase):
         self.target()
         run = read_json(self.root / 'run.json')
         run['workflow_version'] = '0.16'
-        run['final_text'] = '产品实习'
+        run['final_text'] = '# 示例候选人'
+        run['report_overview'] = {'headline':'产品实习申请：调研与原型有依据，验证方法待补充','introduction':'按已有材料作条件判断。','evidence_summary':'访谈与原型','gap_summary':'验证方法','assessment':[{'dimension':'需求调研','judgment':'有直接材料','status':'met','requirement_ids':['R1'],'evidence_ids':['E2']}],'fit_scope':'仅依据本次材料','eligibility':'到岗约束未核实','priorities':[]}
         write_json(self.root / 'run.json', run)
         self.assertTrue(validate_run(self.root)['ok'])
         run['final_text'] = ''; write_json(self.root / 'run.json', run)

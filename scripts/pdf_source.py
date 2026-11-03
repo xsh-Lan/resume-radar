@@ -48,7 +48,7 @@ def read_pdf(path, image_dir=None):
                     text.append('\n'); characters.append(None)
             if page_chars < 4 and page.get_images():
                 raise ValueError(f'第 {index + 1} 页缺少可提取文字，可能是扫描件。首版请使用文字版 PDF。')
-            entry = {'number': index + 1, 'width': page.rect.width, 'height': page.rect.height}
+            entry = {'number': index + 1, 'width': page.rect.width, 'height': page.rect.height, 'links': [{'uri': link.get('uri',''), 'target_page': link.get('page'), 'text': page.get_textbox(link['from']), 'rect': list(link['from'])} for link in page.get_links() if 'from' in link]}
             if image_dir:
                 name = f'page-{index + 1}.png'
                 page.get_pixmap(matrix=fitz.Matrix(1.8, 1.8), alpha=False).save(str(Path(image_dir) / name))

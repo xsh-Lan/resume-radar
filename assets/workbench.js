@@ -10,7 +10,7 @@ const reviews = [...DATA.reviews].sort((a,b) => Math.min(...a.unit_ids.map(id=>u
 const reviewMap = new Map(reviews.map(x => [x.id,x]));
 const numbers = new Map(reviews.map((x,i)=>[x.id,i+1]));
 const plan=DATA.confirmation?.outputs||DATA.confirmation?.stage2;
-const titles = {optimized:'优化后的简历',overview:'整体判断',modules:'模块诊断',reviews:'逐句审阅',questions:'待补充事项',requirements:'岗位要求对照',library:'经历示例库'};
+const titles = {optimized:'优化后的简历',overview:'整体判断',modules:'模块诊断',reviews:'逐句审阅',questions:'待补充事实',requirements:'岗位要求对照',library:'产品简历库'};
 let currentView='overview', activeReview='', filter='all', zoom=1, activeCase=null, caseTab='work';
 let moduleFilter='*';
 const moduleOf=review=>units.get(review.unit_ids[0])?.section||'基本信息';
@@ -135,9 +135,9 @@ function reviewCard(review){
  summary.addEventListener('click',()=>highlightReview(review.id,true));card.append(summary);
  const body=node('div','review-body');body.append(locateButton(review));
  if(!review.unit_ids.every(id=>DATA.locations[id]?.status==='matched'))addNotice(body,'部分原文未能唯一定位。请以这里保留的原句与 PDF 原件核对。');
- heading(body,'原文');paragraph(body,originalText(review),'quote-box');
+ if(!review.unit_ids.every(id=>DATA.locations[id]?.status==='matched')){heading(body,'待核对原句');paragraph(body,originalText(review),'quote-box');}
  heading(body,review.decision==='needs_input'?'基于已知事实的保守表达':'修改后');
- const changed=review.text||(review.decision==='keep'?originalText(review):'暂不生成新表述，先核实事实。');paragraph(body,changed,'rewrite-box');
+ const changed=review.text||(review.decision==='keep'?'保留原句，见左侧高亮。':'暂无可确认的改写，相关未知见待补充事实。');paragraph(body,changed,'rewrite-box');
  if(review.text)body.append(button('复制修改后文字',()=>copyText(review.text)));
  heading(body,'原因与建议');paragraph(body,review.reason);
  if(review.question){heading(body,'需要你补充');paragraph(body,review.question);}
@@ -174,7 +174,15 @@ function renderModules(parent){
  const groups=new Map(),shownDiagnoses=new Set();for(const r of moduleReviews()){const section=moduleOf(r);if(!groups.has(section))groups.set(section,[]);groups.get(section).push(r);}
  for(const [section,items] of groups){const group=node('section','module-group');group.append(node('h3','',section+' · '+items.filter(r=>r.decision!=='keep').length+' 处建议'));
   for(const id of new Set(items.flatMap(r=>r.diagnosis_ids))){if(shownDiagnoses.has(id))continue;shownDiagnoses.add(id);const d=diagnoses.get(id);if(!d)continue;const block=node('section','requirement-card');block.append(node('h3','',d.title||d.does_not_demonstrate));paragraph(block,d.demonstrates);paragraph(block,d.impact);paragraph(block,d.next_action);const related=items.filter(r=>r.diagnosis_ids.includes(id));for(const r of related)block.append(button('对照原文 #'+numbers.get(r.id),()=>selectReview(r.id),'locate-button'));group.append(block);}
-  for(const r of items)group.append(reviewCard(r));parent.append(group);}
+  if(!items.some(r=>r.diagnosis_ids.length))paragraph(group,'本模块没有单独的结构或证据诊断；文字调整见逐句审阅。'); group.append(button('查看本模块逐句审阅',()=>{moduleFilter=section;showView('reviews');}));parent.append(group);}
+}
+function renderQuestions(parent){
+ const seen=new Set();let count=0;
+ function item(title,text,related){if(!text||seen.has(text))return;seen.add(text);count++;const card=node('section','requirement-card');card.append(node('h3','',title));paragraph(card,text);for(const r of related)card.append(button('查看逐句项 #'+numbers.get(r.id),()=>selectReview(r.id)));parent.append(card);}
+ for(const r of reviews)if(r.question||r.decision==='needs_input')item(shortTitle(r),r.question||r.reason,[r]);
+ for(const d of DATA.diagnoses)if(d.gap_type==='evidence_missing'||d.question)item(d.title||d.does_not_demonstrate,d.question||d.next_action,reviews.filter(r=>r.diagnosis_ids.includes(d.id)));
+ for(const e of DATA.evidence)if(['unclear','conflicting'].includes(e.status))item('证据待核对',e.action+'：现有材料尚不足以确认，请补充责任范围、阶段或依据。',reviews.filter(r=>r.evidence_ids.includes(e.id)));
+ if(!count)paragraph(parent,'本次已检查逐句审阅、诊断中的事实缺项及不明确或冲突的证据，未记录需要额外补充的事实。这仅表示现有材料足以支持本次保守表述，不代表经历已获外部核实；如发现遗漏，可回到 Codex 补充并更新分析。','empty-state');
 }
 function renderRequirements(parent){
  paragraph(parent,'岗位要求以本次 JD 或已声明的方向依据为准；示例库不作为招聘门槛。','highlight-intro');
@@ -195,7 +203,7 @@ function renderLibrary(parent){
  if(found.length>size){const pager=node('div','library-pagination');const prev=button('上一页',()=>{libraryPage--;drawResults();});prev.disabled=libraryPage===0;const next=button('下一页',()=>{libraryPage++;drawResults();});next.disabled=(libraryPage+1)*size>=found.length;pager.append(prev,node('span','',(libraryPage+1)+' / '+Math.ceil(found.length/size)),next);results.append(pager);}}
  drawResults();
 }
-function renderContent(){const parent=$('#analysis-content');parent.replaceChildren();if(currentView==='overview')renderOverview(parent);else if(currentView==='modules')renderModules(parent);else if(currentView==='reviews'){paragraph(parent,'编号与 PDF 原件标记一致。展开一项即可查看原文、改写与对应建议。','highlight-intro');reviewList(parent,moduleReviews());}else if(currentView==='questions'){const questions=reviews.filter(r=>r.question||r.decision==='needs_input');paragraph(parent,'补充事实后，回到 Codex 更新分析。未确认的内容不会写成既成成果。','highlight-intro');reviewList(parent,questions,false);}else if(currentView==='requirements')renderRequirements(parent);else if(currentView==='optimized'){paragraph(parent,DATA.run.final_text);parent.append(button('复制完整简历',()=>copyText(DATA.run.final_text),'primary-button'));}else renderLibrary(parent);}
+function renderContent(){const parent=$('#analysis-content');parent.replaceChildren();if(currentView==='overview')renderOverview(parent);else if(currentView==='modules')renderModules(parent);else if(currentView==='reviews'){paragraph(parent,'编号与 PDF 原件标记一致。展开一项查看改写与编辑理由，原文在左侧高亮；模块层面的判断见模块诊断。','highlight-intro');reviewList(parent,moduleReviews());}else if(currentView==='questions'){const questions=reviews.filter(r=>r.question||r.decision==='needs_input');paragraph(parent,'补充事实后，回到 Codex 更新分析。未确认的内容不会写成既成成果。','highlight-intro');renderQuestions(parent);}else if(currentView==='requirements')renderRequirements(parent);else if(currentView==='optimized'){paragraph(parent,DATA.run.final_text);parent.append(button('复制完整简历',()=>copyText(DATA.run.final_text),'primary-button'));}else renderLibrary(parent);}
 function openCase(id){activeCase=LIB.cases[id];if(!activeCase)return;caseTab='work';$('#case-title').textContent=activeCase.dutyName;$('#case-meta').textContent=activeCase.roleName+' / '+activeCase.directionName+' / '+activeCase.id;renderCase();$('#case-dialog').showModal();}
 function caseSections(){const c=activeCase,p=c.project;if(caseTab==='work')return [['工作经历',[c.workExperience.introduction,...c.workExperience.bullets]]];if(caseTab==='cstar')return [['项目名称',p.title],...Object.entries(p.cstar).map(([key,value])=>[({C:'C · 背景',S:'S · 情境',T:'T · 任务',A:'A · 行动',R:'R · 结果'})[key]||key,value])];return [['项目名称',p.title],...Object.entries(p.natural).map(([key,value])=>[({background:'项目背景',responsibilities:'本人职责',coreWork:'核心工作',results:'项目结果'})[key]||key,value])];}
 function renderCase(){for(const b of $$('[data-case-tab]')){b.classList.toggle('active',b.dataset.caseTab===caseTab);b.setAttribute('aria-pressed',String(b.dataset.caseTab===caseTab));}const host=$('#case-body');host.replaceChildren();addNotice(host,activeCase.notice||'固定教学示例，仅用于表达参考；其中事实、规模和结果不属于你的经历。');for(const [title,content]of caseSections()){host.append(node('h3','',title));if(Array.isArray(content)){const ul=node('ul');for(const text of content)ul.append(node('li','',text));host.append(ul);}else paragraph(host,content);}}
@@ -210,5 +218,5 @@ $('#zoom-out').addEventListener('click',()=>setZoom(zoom-.1));$('#zoom-in').addE
 $('#close-case').addEventListener('click',()=>$('#case-dialog').close());$('#case-dialog').addEventListener('click',e=>{if(e.target===$('#case-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
 for(const b of $$('[data-case-tab]'))b.addEventListener('click',()=>{caseTab=b.dataset.caseTab;renderCase();});
 $('#copy-case').addEventListener('click',()=>copyText(caseSections().map(([title,value])=>title+'\n'+(Array.isArray(value)?value.join('\n'):value)).join('\n\n')));
-$('#target-name').textContent=DATA.run.target||'按简历探索方向';$('#target-name').title=$('#target-name').textContent;$('#filename').textContent=DATA.filename;$('#filename').title=DATA.filename;$('#page-count').textContent=DATA.pages.length+' 页 · 原文件排版';if($('#review-count'))$('#review-count').textContent=reviews.length;
+$('#target-name').textContent=DATA.run.target||(DATA.run.mode==='general'?'通用简历诊断':'按简历探索方向');$('#target-name').title=$('#target-name').textContent;$('#filename').textContent=DATA.filename;$('#filename').title=DATA.filename;$('#page-count').textContent=DATA.pages.length+' 页 · 原文件排版';if($('#review-count'))$('#review-count').textContent=reviews.length;
 renderPdf();showView('overview');

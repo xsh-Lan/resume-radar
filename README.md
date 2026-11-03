@@ -2,7 +2,7 @@
 
 从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。由 Codex 执行分析，在本机网页中对照 PDF 原件、诊断、改写和固定经历案例。
 
-当前版本：**0.16.4**。支持多职业分析；随包固定案例覆盖产品经理细分岗位。
+当前版本：**0.16.5**。支持多职业分析；随包固定案例覆盖产品经理细分岗位。
 
 ## 报告预览
 
@@ -61,7 +61,7 @@ Hired 固定库包含 41 类产品经理岗位、351 个方向、2,125 组教学
 
 ```text
 python evals/run_eval.py
-python scripts/package_skill.py --output <发布目录>/resume-radar-0.16.4.zip
+python scripts/package_skill.py --output <发布目录>/resume-radar-0.16.5.zip
 ```
 
 完整任务见 [工作流说明](skills/resume-radar/references/guided-workflow.md)，原件对照见 [工作台说明](skills/resume-radar/references/workbench.md)，版本变化见 [CHANGELOG.md](CHANGELOG.md)。

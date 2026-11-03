@@ -58,7 +58,7 @@ def initialize(args):
     run={'schema_version':'2.1','candidate_key':args.candidate_key,
          'mode':'general' if getattr(args,'general',False) else ('jd' if args.jd else ('direction' if args.target else 'explore')),
          'target':args.target or '','target_status':'user_specified' if args.target else 'unresolved',
-         'stage':args.stage or 'unknown','status':'draft','assumptions':[],'role_options':[],
+         'delivery_contract':'0.16.5','stage':args.stage or 'unknown','status':'draft','assumptions':[],'role_options':[],
          'summary':'','actions':[],'final_text':'','display_mode':'focused',
          'market_search':{'status':'not_needed' if args.jd else 'pending','limitations':'','attempts':[]},
          'review':{'status':'pending','findings':[]}}
@@ -212,6 +212,9 @@ def validate_run(directory):
     if not isinstance(review,dict) or review.get('status')!='completed' or not isinstance(review.get('findings'),list) or any(not isinstance(x,str) for x in review.get('findings',[])): fail('review','Focused review not completed')
     evidence=indexed(data['evidence.json'],'evidence'); requirements=indexed(data['requirements.json'],'requirements')
     diagnoses=indexed(data['diagnosis.json'],'diagnosis'); reviews=indexed(data['sentence_review.json'],'sentence_review')
+    if run.get('workflow_version')=='0.16' and run.get('delivery_contract')=='0.16.5':
+        if not isinstance(run.get('report_overview'),dict): fail('overview','New runs require an overall judgment')
+        elif mode!='general' and not run['report_overview'].get('assessment'): fail('overview','Job reviews require a core requirement assessment')
     if 'report_overview' in run:
         overview=run['report_overview']
         if not isinstance(overview,dict):
@@ -310,7 +313,7 @@ def validate_run(directory):
         if extra: fail('new_numbers',label+': '+str(sorted(extra)))
         for term in ('主导','独立负责','独立完成','全权','领导'):
             if term in text and term not in quotes: fail('ownership_upgrade',label+': '+term)
-        if eids and all(evidence[i].get('completion') in {'expected','in_progress','unknown'} for i in eids):
+        if eids and any(evidence[i].get('completion') in {'expected','in_progress','unknown'} or re.search('尚未|未上线|计划|预计',evidence[i].get('quote','')) for i in eids):
             if re.search('已上线|实现|提升|完成',text) and not re.search('未|待|预计|计划|原型|评审|进行中|拟',text): fail('completion_upgrade',label)
     covered=set(); pending=set()
     for ident,v in reviews.items():
@@ -332,8 +335,21 @@ def validate_run(directory):
         if decision=='drop' and v.get('text'): fail('drop_text',ident+': drop is a recommendation, not replacement text')
     if set(resume_units)-covered: fail('coverage','Unreviewed: '+str(sorted(set(resume_units)-covered)))
     if run.get('final_text'):
-        if run.get('target_status')=='unresolved': fail('target','Final version requires selected or disclosed provisional target')
-        check_rewrite(run['final_text'],list(evidence),'final_text')
+        if mode!='general' and run.get('target_status')=='unresolved': fail('target','Final version requires selected or disclosed provisional target')
+        if run.get('delivery_contract')=='0.16.5':
+            approved=[]
+            for v in reviews.values():
+                if v.get('decision')=='drop': continue
+                text=v.get('text')
+                if not text: text='\n'.join(resume_units[u]['text'] for u in v.get('unit_ids',[]) if u in resume_units)
+                if text: approved.append(text)
+            compact=lambda text: re.sub(r'[\s#*`_•◆●]+','',text)
+            approved_text=compact('\n'.join(approved))
+            for line in run['final_text'].splitlines():
+                part=compact(line)
+                if part and part not in approved_text: fail('final_alignment','Final text contains material not present in reviewed edits: '+line[:100])
+        else:
+            check_rewrite(run['final_text'],list(evidence),'final_text')
     if pending: warnings.append({'code':'needs_input','detail':f'{len(pending)}个单元待补事实；完成审阅不等于这些事实已确认。'})
     if mode!='jd': warnings.append({'code':'no_jd','detail':'这是方向级分析，不代表具体公司的匹配分或录用概率。'})
     return {'ok':not errors,'errors':errors,'warnings':warnings,
