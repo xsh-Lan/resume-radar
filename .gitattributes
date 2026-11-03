@@ -1,0 +1,2 @@
+# Keep the bundled library byte-identical so its integrity hashes survive checkout.
+assets/hired-library/** -text
