@@ -91,3 +91,18 @@ role_options可选recommended_jd_source_ids，必须是该方向jd_source_ids的
 ## 个人信息覆盖
 
 姓名、联系方式、教育与日期信息同样生成原文单元并审阅。校验不因出现邮箱或手机号而阻断；只检查来源、引用、覆盖与事实改写。无法仅凭格式证明电话或邮箱可用，不擅自把显示地址改成另一事实地址。
+
+
+## 0.13 PDF 工作台扩展
+
+新完整评估直接以文字版 PDF 初始化，另保存 original.pdf 和 pdf-origin.json（filename、sha256）。来源单元仍由原件提取文字生成。网页重新读取同一 PDF，按字符位置建立页码和相对矩形；原件哈希不一致阻止生成。validation.json.pdf_mapping 给出 matched、total、unresolved；未可靠匹配显示待核对。
+
+run.example_library_scope 为 product_management 或 other。非产品经理目标不关联此库。省略时仅根据明确的产品经理目标名称兼容推断。
+
+可选 example_links.json 为列表，每项含 review_id、case_id、reason、conditions。引用真实审阅和固定案例，说明参考价值与适用边界。它是教学参考关联，不是候选人事实或招聘要求，不把案例数字写入 evidence 或改写。
+
+原六文件的校验规则保持不变。旧文本运行目录仍可导出兼容 HTML。新 PDF 工作台的视觉和页面对应规则见 DESIGN.md，旧报告视觉约定不限制新工作台。
+
+## 0.14 求职工作流
+
+新完整运行使用 --guided，run.workflow_version=0.14。confirmation.json 保存 Stage 1 需求及 Stage 2 方案，两阶段由本机网页真实提交。目标岗位 target_choice=unclear/specified，第一项不明确；需求路由与 JD 来源独立。route 01/02/03 对应 mode jd/direction/general。general 不要求招聘 requirements，不强制联网，禁止伪造岗位匹配判断。需求、简历或已选 JD 变化导致方案失效；交付校验检查确认状态。optimized_resume=false 时 final_text 为空，true 时需有完整忠实优化文字；sentence_review=false 时按经历合并审阅。

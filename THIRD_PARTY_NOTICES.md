@@ -14,4 +14,8 @@ This plugin bundles or adapts the following skill sources:
    - Source: https://github.com/lan1177/interview-prep
    - The upstream README declares the MIT license; the upstream repository does not include a separate license file.
 
-The de-identified `excellent-resume-patterns` library was created locally for this plugin and does not include the original resume files or personally identifying details.
+
+
+## Hired fixed experience library
+
+`assets/hired-library/` contains the unchanged v4 content resources from the user-provided Hired 1.0.48 package, created by 后知后觉产品经理团队. The original application states Copyright ©2025–2026 后知后觉产品经理团队, All Rights Reserved. The project does not grant new rights to these materials. Original case notices and the release manifest are retained. Entries are teaching references, not independently verified candidate histories.

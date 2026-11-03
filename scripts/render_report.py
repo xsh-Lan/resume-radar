@@ -112,8 +112,11 @@ def overview(run, count):
     return ''.join(body)
 
 
-def render(directory, output_dir):
+def render(directory, output_dir, pdf=None, open_browser=False):
     root = Path(directory)
+    if pdf or (root / 'pdf-origin.json').exists():
+        from workbench import render_workbench
+        return render_workbench(root, output_dir, pdf, open_browser)
     result = validate_run(root)
     if not result['ok']:
         raise ValueError(json.dumps(result, ensure_ascii=False))
@@ -242,9 +245,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run_dir')
     parser.add_argument('--output-dir', required=True)
+    parser.add_argument('--pdf', help='使用指定 PDF 原件生成对照工作台')
+    parser.add_argument('--open', action='store_true', help='生成后在本机浏览器打开')
     args = parser.parse_args()
     try:
-        result = render(args.run_dir, args.output_dir)
+        result = render(args.run_dir, args.output_dir, args.pdf, args.open)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         print(json.dumps({'ok': False, 'error': str(exc)}, ensure_ascii=False))
         return 1
@@ -253,4 +258,6 @@ def main():
 
 
 if __name__ == '__main__':
+    from cli_support import configure_stdio
+    configure_stdio()
     raise SystemExit(main())

@@ -47,16 +47,27 @@ def read_text(path):
 def initialize(args):
     dest=Path(args.run_dir).resolve()
     if dest.exists(): raise ValueError('Run directory exists; use a new candidate/source version directory')
-    sources=[make_source(read_text(args.resume),'RESUME','resume')]
+    pdf_input = Path(args.resume).suffix.lower() == '.pdf'
+    pdf_data = None
+    if pdf_input:
+        from pdf_source import read_pdf
+        pdf_data = read_pdf(args.resume)
+    sources=[make_source(pdf_data['text'] if pdf_data else read_text(args.resume),'RESUME','resume')]
     if args.jd: sources.append(make_source(read_text(args.jd),'JD','jd'))
     run={'schema_version':'2.1','candidate_key':args.candidate_key,
-         'mode':'jd' if args.jd else ('direction' if args.target else 'explore'),
+         'mode':'general' if getattr(args,'general',False) else ('jd' if args.jd else ('direction' if args.target else 'explore')),
          'target':args.target or '','target_status':'user_specified' if args.target else 'unresolved',
          'stage':args.stage or 'unknown','status':'draft','assumptions':[],'role_options':[],
          'summary':'','actions':[],'final_text':'','display_mode':'focused',
          'market_search':{'status':'not_needed' if args.jd else 'pending','limitations':'','attempts':[]},
          'review':{'status':'pending','findings':[]}}
+    if getattr(args, 'guided', False): run['workflow_version'] = '0.14'
+    if run['mode'] == 'general':
+        run['market_search'] = {'status':'not_needed','limitations':'用户选择通用简历诊断，不作目标岗位匹配或市场检索。','attempts':[]}
     dest.mkdir(parents=True)
+    if pdf_input:
+        shutil.copyfile(args.resume, dest/'original.pdf')
+        write_json(dest/'pdf-origin.json', {'filename': Path(args.resume).name, 'sha256': pdf_data['sha256']})
     write_json(dest/'run.json',run); write_json(dest/'sources.json',{'sources':sources})
     for f in DATA_FILES[2:]: write_json(dest/f,[])
     return {'run_dir':str(dest),'mode':run['mode'],'resume_units':len(sources[0]['units']),
@@ -145,8 +156,17 @@ def validate_run(directory):
             units[u['id']]=u
             if s.get('kind')=='resume': resume_units[u['id']]=u
     if not resume_units: fail('source','No resume units')
+    if run.get('workflow_version') == '0.14':
+        try:
+            from confirm import execution_ready
+            confirmed = execution_ready(root)
+            expected = {'01':'jd','02':'direction','03':'general'}[confirmed['stage1']['route']]
+            if run.get('mode') != expected: fail('confirmation','Run mode does not match confirmed route')
+            if not confirmed['stage2']['optimized_resume'] and run.get('final_text'): fail('confirmation','Final resume was not requested')
+            if confirmed['stage2']['optimized_resume'] and not run.get('final_text','').strip(): fail('confirmation','Requested optimized resume is missing')
+        except (OSError,ValueError,KeyError) as exc: fail('confirmation',str(exc))
     mode=run.get('mode')
-    if mode not in {'jd','direction','explore'}: fail('mode',str(mode))
+    if mode not in {'jd','direction','explore','general'}: fail('mode',str(mode))
     if mode=='jd' and not any(s.get('kind')=='jd' for s in sources.values()): fail('mode','JD source required')
     if mode=='direction' and not run.get('target'): fail('mode','Direction target required')
     if run.get('target_status') not in {'user_specified','user_selected','provisional','unresolved'}: fail('target','Invalid status')
@@ -221,7 +241,7 @@ def validate_run(directory):
         if e.get('completion') not in {'actual','expected','in_progress','unknown'}: fail('completion',ident)
         fields(e,['action'],ident)
     if not evidence: fail('evidence','Sourced evidence required')
-    if not requirements: fail('requirements','At least one justified requirement required')
+    if not requirements and mode != 'general': fail('requirements','At least one justified requirement required')
     for ident,r in requirements.items():
         fields(r,['role','description','task','responsibility','decision_depth'],ident)
         basis=r.get('basis'); ids=refs(r.get('source_unit_ids',[]),units,ident+': source units')
@@ -322,7 +342,8 @@ def snapshot(directory):
 def main():
     p=argparse.ArgumentParser(description=__doc__); sub=p.add_subparsers(dest='command',required=True)
     init=sub.add_parser('init'); init.add_argument('--resume',required=True); init.add_argument('--jd'); init.add_argument('--target'); init.add_argument('--stage'); init.add_argument('--candidate-key',required=True); init.add_argument('--run-dir',required=True)
-    add=sub.add_parser('add-source'); add.add_argument('--run-dir',required=True); add.add_argument('--kind',choices=['followup','artifact'],required=True); add.add_argument('--file',required=True)
+    init.add_argument('--guided',action='store_true'); init.add_argument('--general',action='store_true')
+    add=sub.add_parser('add-source'); add.add_argument('--run-dir',required=True); add.add_argument('--kind',choices=['followup','artifact','jd'],required=True); add.add_argument('--file',required=True)
     job=sub.add_parser('add-jd',help='Import inspected public JD text and provenance; does not fetch the web')
     for name in ('run-dir','file','url','role','title','company','retrieved-at'): job.add_argument('--'+name,required=True)
     for name in ('location','level','published-at'): job.add_argument('--'+name,default='unknown')
@@ -335,4 +356,7 @@ def main():
     except (OSError,ValueError,KeyError,TypeError) as exc:
         print(json.dumps({'ok':False,'error':str(exc)},ensure_ascii=False),file=sys.stderr); return 1
 
-if __name__=='__main__': raise SystemExit(main())
+if __name__=='__main__':
+    from cli_support import configure_stdio
+    configure_stdio()
+    raise SystemExit(main())
