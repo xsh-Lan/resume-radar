@@ -1,6 +1,6 @@
 {
   "name": "resume-radar",
-  "version": "0.16",
+  "version": "0.16.1",
   "description": "从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。",
   "author": {
     "name": "xsh-Lan"
