@@ -7,3 +7,26 @@ profile/versions/*
 .eval-tmp/
 __pycache__/
 *.pyc
+
+# Local candidate sessions and generated outputs are not project sources.
+/runs/
+/report/
+/reports/
+/candidate-data/
+/resume-radar-experience/
+/release/
+/dist/
+confirmation-replies/
+job-sources/
+run.json
+sources.json
+evidence.json
+diagnosis.json
+sentence_review.json
+confirmation.json
+original.pdf
+pdf-origin.json
+optimized-resume.md
+auth.json
+.env
+.env.*

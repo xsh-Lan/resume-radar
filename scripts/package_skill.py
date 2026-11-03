@@ -6,8 +6,32 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DIRECTORIES = ('scripts', 'assets', 'skills', 'standards', 'third-party-licenses')
-FILES = ('requirements.txt', 'README.md', 'THIRD_PARTY_NOTICES.md', 'DESIGN.md')
+FILES = ('requirements.txt', 'README.md', 'PRODUCT.md', 'CHANGELOG.md', 'PRIVACY.md',
+         'THIRD_PARTY_NOTICES.md', 'DESIGN.md')
 PROMOTED_ENTRIES = {'skills/resume-radar/SKILL.md', 'skills/resume-radar/agents/openai.yaml'}
+RUNTIME_FOLDERS = {'__pycache__', '.git', '.eval-tmp', 'profile', 'runs', 'report', 'reports',
+                   'sessions', 'job-sources', 'confirmation-replies', 'candidate-data'}
+RUNTIME_FILES = {'run.json', 'sources.json', 'evidence.json', 'requirements.json', 'diagnosis.json',
+                 'sentence_review.json', 'confirmation.json', 'auth.json', 'original.pdf',
+                 'optimized-resume.md', 'goal-values.json', 'plan-values.json', 'target-values.json'}
+ASSET_FILES = {'assets/confirm.html', 'assets/report.css', 'assets/workbench.html',
+               'assets/workbench.css', 'assets/workbench.js'}
+
+
+def distributable(relative):
+    """Only program resources are installable; runtime records stay outside."""
+    if any(part in RUNTIME_FOLDERS for part in relative.parts): return False
+    if relative.name in RUNTIME_FILES or relative.name.startswith('.env'): return False
+    name = relative.as_posix()
+    if name in PROMOTED_ENTRIES: return False
+    category = relative.parts[0]
+    if category == 'scripts': return len(relative.parts) == 2 and relative.suffix == '.py'
+    if category == 'assets':
+        return name in ASSET_FILES or (name.startswith('assets/hired-library/') and relative.suffix == '.json')
+    if category == 'skills': return relative.suffix in {'.md', '.yaml'}
+    if category == 'standards': return relative.suffix in {'.md', '.json'}
+    if category == 'third-party-licenses': return relative.suffix in {'.txt', '.md'}
+    return False
 
 
 def package(output):
@@ -20,8 +44,7 @@ def package(output):
             archive.write(ROOT / name, 'resume-radar/' + name)
         for directory in DIRECTORIES:
             for path in sorted((ROOT / directory).rglob('*')):
-                if not path.is_file() or '__pycache__' in path.parts or path.suffix == '.pyc': continue
-                if path.relative_to(ROOT).as_posix() in PROMOTED_ENTRIES: continue
+                if not path.is_file() or path.is_symlink() or not distributable(path.relative_to(ROOT)): continue
                 archive.write(path, 'resume-radar/' + path.relative_to(ROOT).as_posix())
     return {'package': str(output), 'bytes': output.stat().st_size}
 

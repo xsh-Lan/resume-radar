@@ -1,35 +1,63 @@
-# 简历雷达
+# 简历雷达 · Resume Radar
 
-当前版本：**0.16.3**。从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。在 Codex 对话中一次确定方向、JD来源与目标岗位，由 Codex 直接执行，在本机网页中将 PDF 原件与诊断、改写及固定经历案例对照。支持多职业分析；随包案例覆盖产品经理细分岗位。
+从岗位发现、简历诊断、能力差距分析到简历优化的求职工作流 Agent。由 Codex 执行分析，在本机网页中对照 PDF 原件、诊断、改写和固定经历案例。
 
-## 安装与使用
+当前版本：**0.16.4**。支持多职业分析；随包固定案例覆盖产品经理细分岗位。
 
-解压发布包，将其中的 resume-radar 文件夹放入 ~/.codex/skills/（Windows 通常为 C:/Users/你的用户名/.codex/skills/）。重新打开 Codex 聊天后使用 `$resume-radar`，提供能选中文字的 PDF，可同时提供意向方向或 JD。
+## 安装
 
-需要 Python 3.10+ 和 PyMuPDF。Codex 根据 skill 说明检查依赖，缺少时运行 `python -m pip install -r <安装目录>/requirements.txt`。浏览器展示不需要 Chrome 扩展、模型 Key 或网页后台。首版不处理 Word 自动转换和扫描件。
+1. 从 [Releases](https://github.com/xsh-Lan/resume-radar/releases/latest) 下载最新 `resume-radar-版本.zip`。
+2. 解压，将 `resume-radar` 文件夹放进 `~/.codex/skills/`。Windows 通常为 `C:/Users/你的用户名/.codex/skills/`。
+3. 新建 Codex 聊天，引用 `$resume-radar` 并提供可选择文字的 PDF 简历，可同时提供意向岗位或 JD。
 
-用户只需一次选择“本次求职目标”，同时确定方向、JD来源与具体岗位。第一项为“不明确，帮我推荐”，授权Agent检索并推荐主目标。默认全文诊断、逐句审阅与优化全文，不再询问输出范围或追问事实；分析后打开原件对照报告。保留四个核心 skill 的方法与内容。完整评估通过校验后打开本机报告：中间展示原始 PDF 各页，右侧给出对应诊断和案例，支持点击编号双向定位、缩放、筛选、复制及本机处理标记。修改建议不改写 PDF。
+需要 Python 3.10+ 和 PyMuPDF。缺少依赖时由 Codex 按安装说明运行 `python -m pip install -r <安装目录>/requirements.txt`。网页无需 Chrome 扩展、模型 Key 或在线服务；当前不支持扫描件 OCR 和 Word 自动转换。
 
-六个入口为整体判断、模块诊断、逐句审阅、待补充事项、岗位要求及经历示例库。Hired 固定库含 41 类产品经理岗位、351 个细分方向、2,125 组案例，保留原文与教学说明；不声称案例是真实已核验履历，不用案例替代候选人事实。非产品经理目标不强配案例。不使用 AI 生成新案例补库。
+## 使用流程
+
+用户只做一次“本次求职目标”选择，同时确定方向、JD 来源和目标岗位：
+
+- **不明确，帮我推荐**：根据简历检索真实 JD，由 Agent 推荐主目标并继续。
+- **已有岗位或 JD**：使用用户指定或选定的对象分析。
+- **通用简历诊断**：不针对具体 JD，分析经历结构、项目价值和表达。
+
+已有明确指令直接沿用。默认检查全份简历、逐句审阅并生成忠实优化全文，不另设输出方案或事实补充关卡。未知事实直接标注，不编造数字、贡献或效果。局部润色和单独面试训练按原请求处理。
+
+分析与校验完成后打开报告，支持：
+
+- PDF 原件与诊断双向定位，小编号位于原件右侧；项目符号不单独计为问题。
+- 整体判断、模块诊断、逐句审阅、待补充事项、岗位要求及优化全文；通用诊断隐藏岗位要求。
+- 模块诊断与逐句审阅按教育、实习、项目等实际章节筛选。
+- 固定经历库检索、查看与复制；处理标记保存在当前浏览器，不改写原 PDF。
+
+## 固定案例与事实边界
+
+保留四个核心模块的方法：统一入口、岗位分析、简历优化、证据追问与面试训练。完整任务默认不主动追问，面试训练由用户单独请求。
+
+Hired 固定库包含 41 类产品经理岗位、351 个方向、2,125 组教学案例，保留原文与来源说明。案例包含虚构情节和结果数字，不能作为候选人的事实证据；不使用 AI 生成新案例补库。非产品经理目标不强配产品经理案例。
+
+## 个人资料与发布边界
+
+个人简历、分析、回答和报告保存在用户指定的本机运行目录。源码与安装包不收录个人使用记录或登录凭据；不提供带个人资料的页面截图。合成测试样例明确标注，不代表实际候选人。
+
+本机网页不主动调用模型；Codex 推理及岗位检索遵循当前宿主环境的数据处理设置。详细边界见 [PRIVACY.md](PRIVACY.md)，来源说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## 项目结构
+
+| 目录 | 内容 |
+| --- | --- |
+| `skills/` | 四个核心模块及工作流说明 |
+| `scripts/` | 来源管理、确认、校验、PDF 定位、报告与打包 |
+| `assets/` | 网页模板和固定案例资源 |
+| `standards/` | 数据契约与判断标准 |
+| `evals/` | 合成测试与行为验证 |
 
 ## 开发与打包
 
-四个核心 skill 位于 skills/：resume-radar、job-application-assistant、resume-refiner、interview-prep。固定库在 assets/hired-library/，原独立教学卡片模块已移除。
-
 ```text
-python scripts/workflow.py init --resume <原件.pdf> --run-dir <新运行目录> --candidate-key <候选人键> --guided
-python scripts/example_library.py --query <具体职责词>
-python scripts/workflow.py validate --run-dir <运行目录>
-python scripts/render_report.py <运行目录> --output-dir <运行目录>/report --open
-python scripts/package_skill.py --output <发布目录>/resume-radar-0.16.3.zip
+python evals/run_eval.py
+python scripts/package_skill.py --output <发布目录>/resume-radar-0.16.4.zip
 ```
 
-初始化只保存原件、提取来源和空分析文件，不自动完成分析。完整任务只需一次合并目标选择，具体步骤见 skills/resume-radar/references/guided-workflow.md。Codex 依照数据契约实际完成判断、改写和复核，再渲染报告。PDF 对照操作见 skills/resume-radar/references/workbench.md。
+完整任务见 [工作流说明](skills/resume-radar/references/guided-workflow.md)，原件对照见 [工作台说明](skills/resume-radar/references/workbench.md)，版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
-运行资料保存到独立候选人与版本目录，不放进 skill。报告文件夹含 HTML、案例脚本、页面图片和原 PDF；移动时保留整个文件夹。打包脚本按白名单收集程序与固定资源，不包含候选人信息、测试输出或源码仓库。处理标记只保存在当前浏览器，补充事实仍需回到 Codex 更新。
-
-运行 `python evals/run_eval.py` 验证数据与 PDF 定位行为。更新见 CHANGELOG.md，来源说明见 THIRD_PARTY_NOTICES.md。
-
-## 三路由与确认
-
-Route 01：已有 JD 精准匹配；Route 02：确认方向后自动检索真实岗位，由用户选定 JD；Route 03：不使用 JD 的通用诊断。目标岗位首先提供“不明确”选项，再提供“已有意向岗位”。方向、JD来源与岗位合并为同一次选择，用户确认或委托后直接执行，不再增加分析方案与事实补充关卡。
+安装包按程序资源清单生成，只保留一个“简历雷达”主入口与三个专业模块。初始化与渲染均不代替实际分析；通过机械校验不代表事实已获外部证明或预测录用结果。
