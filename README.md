@@ -4,9 +4,15 @@
 
 当前版本：**0.16.4**。支持多职业分析；随包固定案例覆盖产品经理细分岗位。
 
+## 报告预览
+
+![简历雷达报告：左侧 PDF 原件与定位标记，右侧诊断与建议](docs/images/synthetic-report.png)
+
+*截图使用仓库内的虚构教学案例，不含真实求职者资料。左侧保留 PDF 原件，右侧查看诊断与建议；点击编号可对照对应原句。示例仅展示交互，不代表实际求职结果。*
+
 ## 安装
 
-1. 从 [Releases](https://github.com/xsh-Lan/resume-radar/releases/latest) 下载最新 `resume-radar-版本.zip`。
+1. 从 [Releases](https://github.com/Lan-shx/resume-radar/releases/latest) 下载最新 `resume-radar-版本.zip`。
 2. 解压，将 `resume-radar` 文件夹放进 `~/.codex/skills/`。Windows 通常为 `C:/Users/你的用户名/.codex/skills/`。
 3. 新建 Codex 聊天，引用 `$resume-radar` 并提供可选择文字的 PDF 简历，可同时提供意向岗位或 JD。
 
